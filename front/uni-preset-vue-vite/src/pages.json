@@ -1,0 +1,64 @@
+{
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "我的日记",
+				"navigationBarBackgroundColor": "#FF9A76",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#FFF5F0"
+			}
+		},
+		{
+			"path": "pages/category/category",
+			"style": {
+				"navigationBarTitleText": "分类详情",
+				"navigationBarBackgroundColor": "#FF9A76",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#FFF5F0"
+			}
+		},
+		{
+			"path": "pages/category-manage/category-manage",
+			"style": {
+				"navigationBarTitleText": "管理分类",
+				"navigationBarBackgroundColor": "#FF9A76",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#FFF5F0"
+			}
+		},
+		{
+			"path": "pages/detail/detail",
+			"style": {
+				"navigationBarTitleText": "日记详情",
+				"navigationBarBackgroundColor": "#FF9A76",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#FFF5F0"
+			}
+		},
+		{
+			"path": "pages/edit/edit",
+			"style": {
+				"navigationBarTitleText": "编辑日记",
+				"navigationBarBackgroundColor": "#FF9A76",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#FFF5F0"
+			}
+		},
+		{
+			"path": "pages/trash/trash",
+			"style": {
+				"navigationBarTitleText": "回收站",
+				"navigationBarBackgroundColor": "#FF9A76",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#FFF5F0"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "云日记",
+		"navigationBarBackgroundColor": "#FF9A76",
+		"backgroundColor": "#FFF5F0"
+	}
+}

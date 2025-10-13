@@ -9,6 +9,20 @@
     <!-- 日记列表 -->
     <view class="diary-list" v-if="trashList.length > 0">
       <view class="diary-item" v-for="item in trashList" :key="item.id">
+        <!-- 附件缩略图 -->
+        <view class="diary-attachments" v-if="item.attachments && item.attachments.length > 0">
+          <image
+            class="attachment-thumb"
+            v-for="(att, index) in item.attachments.slice(0, 3)"
+            :key="index"
+            :src="att.url"
+            mode="aspectFill"
+            @click.stop="PreviewAttachment(att, index, item)"
+          />
+          <view class="attachment-more" v-if="item.attachments.length > 3">
+            <text class="more-text">+{{ item.attachments.length - 3 }}</text>
+          </view>
+        </view>
         <view class="diary-header">
           <view class="diary-date">{{ FormatDate(item.createTime) }}</view>
           <view class="delete-info">
@@ -16,7 +30,7 @@
           </view>
         </view>
         <view class="diary-title">{{ item.title }}</view>
-        <view class="diary-content-preview">{{ item.content }}</view>
+        <view class="diary-content-preview">{{ getPlainTextPreview(item) }}</view>
         <view class="diary-footer">
           <view class="action-button restore" @click="RestoreDiary(item.id)">
             <text class="button-icon">↩️</text>
@@ -51,6 +65,7 @@
 
 <script>
 import storage from '@/utils/storage.js'
+import { getPlainTextPreview } from '@/utils/textUtils.js'
 
 export default {
   data() {
@@ -79,6 +94,11 @@ export default {
       const deletedDate = new Date(deletedTime)
       const diffDays = Math.ceil((now - deletedDate) / (1000 * 60 * 60 * 24))
       return Math.max(0, 30 - diffDays)
+    },
+
+    // 获取纯文本预览（使用工具函数）
+    getPlainTextPreview(item) {
+      return getPlainTextPreview(item, 100)
     },
 
     RestoreDiary(id) {
@@ -166,6 +186,23 @@ export default {
       }
     },
 
+    // 预览附件
+    PreviewAttachment(attachment, index, item) {
+      if (attachment.type === 'image') {
+        // 图片预览
+        uni.previewImage({
+          urls: item.attachments.map(att => att.url),
+          current: index
+        })
+      } else {
+        // 其他类型附件（如视频）的处理
+        uni.showToast({
+          title: '暂不支持预览此类型文件',
+          icon: 'none'
+        })
+      }
+    },
+
     GoBack() {
       uni.navigateBack()
     },
@@ -214,6 +251,38 @@ export default {
   padding: 32rpx;
   margin-bottom: 24rpx;
   box-shadow: 0 4rpx 16rpx rgba(255, 154, 118, 0.1);
+}
+
+/* 附件缩略图 */
+.diary-attachments {
+  display: flex;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+  overflow: hidden;
+}
+
+.attachment-thumb {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+}
+
+.attachment-more {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 12rpx;
+  background: rgba(255, 154, 118, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.more-text {
+  font-size: 28rpx;
+  color: #ff9a76;
+  font-weight: 500;
 }
 
 .diary-header {

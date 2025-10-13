@@ -170,21 +170,27 @@ export default {
   background-color: #fff5f0;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .content {
   flex: 1;
-  padding: 32rpx;
+  padding: 24rpx;
   padding-bottom: 160rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 顶部信息卡片 */
 .header-card {
   background: linear-gradient(135deg, #ff9a76 0%, #ff7e5f 100%);
-  border-radius: 32rpx;
-  padding: 40rpx;
-  margin-bottom: 32rpx;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
   box-shadow: 0 8rpx 24rpx rgba(255, 126, 95, 0.3);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .date-info {
@@ -208,6 +214,9 @@ export default {
 /* 附件展示区域 */
 .attachments-section {
   margin-bottom: 24rpx;
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .attachments-scroll {
@@ -217,22 +226,24 @@ export default {
 
 .attachments-list {
   display: inline-flex;
-  gap: 16rpx;
+  gap: 12rpx;
   padding: 8rpx 0;
 }
 
 .attachment-item {
   display: inline-block;
-  width: 240rpx;
-  height: 240rpx;
+  width: 200rpx;
+  height: 200rpx;
   border-radius: 16rpx;
   overflow: hidden;
   box-shadow: 0 4rpx 16rpx rgba(255, 154, 118, 0.2);
+  flex-shrink: 0;
 }
 
 .attachment-image {
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .attachment-video-preview {
@@ -259,42 +270,55 @@ export default {
 .title-section {
   background: #ffffff;
   border-radius: 24rpx;
-  padding: 40rpx;
+  padding: 32rpx;
   margin-bottom: 24rpx;
   box-shadow: 0 4rpx 16rpx rgba(255, 154, 118, 0.1);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .title {
-  font-size: 44rpx;
+  font-size: 40rpx;
   font-weight: bold;
   color: #333333;
   line-height: 1.4;
   word-break: break-all;
+  word-wrap: break-word;
+  width: 100%;
 }
 
 /* 内容区域 */
 .content-section {
   background: #ffffff;
   border-radius: 24rpx;
-  padding: 40rpx;
+  padding: 32rpx;
   margin-bottom: 24rpx;
   box-shadow: 0 4rpx 16rpx rgba(255, 154, 118, 0.1);
-  min-height: 400rpx;
+  min-height: 300rpx;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .content-text {
-  font-size: 32rpx;
+  font-size: 30rpx;
   color: #666666;
   line-height: 1.8;
   word-break: break-all;
+  word-wrap: break-word;
   white-space: pre-wrap;
+  width: 100%;
+  overflow-wrap: break-word;
 }
 
 .content-richtext {
-  font-size: 32rpx;
+  font-size: 30rpx;
   color: #666666;
   line-height: 1.8;
   word-break: break-all;
+  word-wrap: break-word;
+  width: 100%;
+  overflow-wrap: break-word;
 }
 
 /* 底部信息 */
@@ -315,22 +339,26 @@ export default {
   left: 0;
   right: 0;
   background: #ffffff;
-  padding: 24rpx 32rpx;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
   display: flex;
-  gap: 24rpx;
+  gap: 20rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .action-button {
   flex: 1;
-  height: 88rpx;
-  border-radius: 44rpx;
+  height: 80rpx;
+  border-radius: 40rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  font-size: 32rpx;
+  font-size: 30rpx;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .action-button.primary {
@@ -359,6 +387,9 @@ export default {
 }
 
 .button-text {
-  font-size: 32rpx;
+  font-size: 30rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

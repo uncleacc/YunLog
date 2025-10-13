@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>文本工具测试</title>
+</head>
+<body>
+    <h1>文本处理工具测试</h1>
+    <div id="test-results"></div>
+
+    <script>
+        // 复制工具函数代码进行测试
+        function stripHtmlTags(html) {
+          if (!html) return ''
+          
+          return html
+            .replace(/<[^>]+>/g, '') // 移除所有HTML标签
+            .replace(/&nbsp;/g, ' ') // 替换空格实体
+            .replace(/&amp;/g, '&')  // 替换&符号实体
+            .replace(/&lt;/g, '<')   // 替换小于号实体
+            .replace(/&gt;/g, '>')   // 替换大于号实体
+            .replace(/&quot;/g, '"') // 替换引号实体
+            .replace(/&#39;/g, "'")  // 替换单引号实体
+            .replace(/\s+/g, ' ')    // 将多个空白字符合并为单个空格
+            .trim()                   // 去除首尾空白
+        }
+
+        function getPlainTextPreview(diaryItem, maxLength = 100) {
+          let text = ''
+          
+          if (diaryItem.contentHtml) {
+            text = stripHtmlTags(diaryItem.contentHtml)
+          } else if (diaryItem.content) {
+            text = diaryItem.content
+          }
+          
+          if (text.length > maxLength) {
+            return text.substring(0, maxLength) + '...'
+          }
+          
+          return text || '(无内容)'
+        }
+
+        // 测试用例
+        const testCases = [
+            {
+                name: '基本HTML标签清理',
+                input: '<p>这是一个<strong>粗体</strong>文本，还有<em>斜体</em>内容。</p>',
+                expected: '这是一个粗体文本，还有斜体内容。'
+            },
+            {
+                name: '列表标签清理',
+                input: '<ul><li>列表项1</li><li>列表项2</li><li>列表项3</li></ul>',
+                expected: '列表项1列表项2列表项3'
+            },
+            {
+                name: '复杂HTML清理',
+                input: '<div><p>段落1</p><p>段落2有<strong>粗体</strong>和<em>斜体</em></p><br/><span>跨度文本</span></div>',
+                expected: '段落1段落2有粗体和斜体跨度文本'
+            },
+            {
+                name: '日记预览测试',
+                diary: {
+                    contentHtml: '<p>这是一篇很长的日记内容，包含了<strong>格式化文本</strong>和<em>其他HTML标签</em>。这段文本应该会被正确地清理并截断到指定长度。还有更多内容继续...</p>'
+                },
+                maxLength: 50,
+                expectedStart: '这是一篇很长的日记内容，包含了格式化文本和其他HTML标签。这段文本应该会被正确地清'
+            }
+        ]
+
+        const resultsDiv = document.getElementById('test-results')
+        
+        testCases.forEach((testCase, index) => {
+            const resultDiv = document.createElement('div')
+            resultDiv.style.marginBottom = '20px'
+            resultDiv.style.border = '1px solid #ccc'
+            resultDiv.style.padding = '10px'
+            
+            let result, passed
+            
+            if (testCase.diary) {
+                // 日记预览测试
+                result = getPlainTextPreview(testCase.diary, testCase.maxLength)
+                passed = result.startsWith(testCase.expectedStart) && result.endsWith('...')
+                
+                resultDiv.innerHTML = `
+                    <h3>测试 ${index + 1}: ${testCase.name}</h3>
+                    <p><strong>输入HTML:</strong> ${testCase.diary.contentHtml}</p>
+                    <p><strong>预期开头:</strong> ${testCase.expectedStart}...</p>
+                    <p><strong>实际结果:</strong> ${result}</p>
+                    <p><strong>测试结果:</strong> <span style="color: ${passed ? 'green' : 'red'}">${passed ? '✅ 通过' : '❌ 失败'}</span></p>
+                `
+            } else {
+                // HTML清理测试
+                result = stripHtmlTags(testCase.input)
+                passed = result === testCase.expected
+                
+                resultDiv.innerHTML = `
+                    <h3>测试 ${index + 1}: ${testCase.name}</h3>
+                    <p><strong>输入HTML:</strong> ${testCase.input}</p>
+                    <p><strong>预期结果:</strong> ${testCase.expected}</p>
+                    <p><strong>实际结果:</strong> ${result}</p>
+                    <p><strong>测试结果:</strong> <span style="color: ${passed ? 'green' : 'red'}">${passed ? '✅ 通过' : '❌ 失败'}</span></p>
+                `
+            }
+            
+            resultsDiv.appendChild(resultDiv)
+        })
+    </script>
+</body>
+</html>

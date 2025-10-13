@@ -2,9 +2,13 @@
   <view class="container">
     <!-- 分类信息卡片 -->
     <view class="category-header" v-if="category" :style="{ background: `linear-gradient(135deg, ${category.color}CC 0%, ${category.color}FF 100%)` }">
-      <text class="category-icon-large">{{ category.icon }}</text>
-      <text class="category-name-large">{{ category.name }}</text>
-      <text class="category-stats">{{ diaryList.length }} 篇日记</text>
+      <view class="category-icon-container">
+        <text class="category-icon-large">{{ category.icon }}</text>
+      </view>
+      <view class="category-info">
+        <text class="category-name-large">{{ category.name }}</text>
+        <text class="category-stats">{{ diaryList.length }} 篇日记</text>
+      </view>
     </view>
 
     <!-- 日记列表 -->
@@ -28,13 +32,14 @@
             <text class="more-text">+{{ item.attachments.length - 3 }}</text>
           </view>
         </view>
-        <view class="diary-header">
-          <text class="diary-date">{{ FormatDate(item.createTime) }}</text>
-        </view>
         <view class="diary-title">{{ item.title }}</view>
-        <view class="diary-content-preview">{{ item.content }}</view>
+        <view class="diary-content-preview">{{ getPlainTextPreview(item) }}</view>
         <view class="diary-footer">
-          <text class="diary-time">{{ FormatTime(item.createTime) }}</text>
+          <view class="diary-datetime">
+            <text class="diary-date">{{ FormatDate(item.createTime) }}</text>
+            <text class="diary-time-separator"></text>
+            <text class="diary-time">{{ FormatTime(item.createTime) }}</text>
+          </view>
           <view class="diary-actions">
             <view class="action-btn" @click.stop="EditDiary(item.id)">
               <text class="action-icon">✏️</text>
@@ -63,6 +68,7 @@
 
 <script>
 import storage from '@/utils/storage.js'
+import { getPlainTextPreview } from '@/utils/textUtils.js'
 
 export default {
   data() {
@@ -113,6 +119,11 @@ export default {
       const hours = String(date.getHours()).padStart(2, '0')
       const minutes = String(date.getMinutes()).padStart(2, '0')
       return `${hours}:${minutes}`
+    },
+
+    // 获取纯文本预览（使用工具函数）
+    getPlainTextPreview(item) {
+      return getPlainTextPreview(item, 100)
     },
 
     AddNewDiary() {
@@ -170,29 +181,40 @@ export default {
   min-height: 100vh;
   padding-bottom: 160rpx;
   background-color: #fff5f0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 分类信息卡片 */
 .category-header {
   margin: 32rpx;
-  padding: 48rpx 40rpx;
+  padding: 32rpx 40rpx;
   border-radius: 32rpx;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  justify-content: center;
   box-shadow: 0 8rpx 24rpx rgba(255, 126, 95, 0.3);
+}
+
+.category-icon-container {
+  margin-right: 24rpx;
 }
 
 .category-icon-large {
   font-size: 96rpx;
-  margin-bottom: 16rpx;
+}
+
+.category-info {
+  display: flex;
+  flex-direction: column;
 }
 
 .category-name-large {
   font-size: 44rpx;
   font-weight: bold;
   color: #ffffff;
-  margin-bottom: 12rpx;
+  margin-bottom: 8rpx;
 }
 
 .category-stats {
@@ -202,16 +224,20 @@ export default {
 
 /* 日记列表 */
 .diary-list {
-  padding: 0 32rpx;
+  padding: 0 24rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .diary-item {
   background: #ffffff;
   border-radius: 24rpx;
-  padding: 32rpx;
+  padding: 24rpx;
   margin-bottom: 24rpx;
   box-shadow: 0 4rpx 16rpx rgba(255, 154, 118, 0.1);
   transition: all 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .diary-item:active {
@@ -224,19 +250,22 @@ export default {
   display: flex;
   gap: 8rpx;
   margin-bottom: 16rpx;
-  overflow: hidden;
+  overflow-x: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .attachment-thumb {
-  width: 120rpx;
-  height: 120rpx;
+  width: 100rpx;
+  height: 100rpx;
   border-radius: 12rpx;
   flex-shrink: 0;
+  object-fit: cover;
 }
 
 .attachment-more {
-  width: 120rpx;
-  height: 120rpx;
+  width: 100rpx;
+  height: 100rpx;
   border-radius: 12rpx;
   background: rgba(255, 154, 118, 0.1);
   display: flex;
@@ -258,39 +287,62 @@ export default {
   margin-bottom: 20rpx;
 }
 
-.diary-date {
-  font-size: 24rpx;
-  color: #999999;
-}
-
 .diary-title {
-  font-size: 36rpx;
+  font-size: 32rpx;
   font-weight: bold;
   color: #333333;
   margin-bottom: 16rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .diary-content-preview {
-  font-size: 28rpx;
+  font-size: 26rpx;
   color: #666666;
   line-height: 1.6;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 20rpx;
+  margin-bottom: 16rpx;
+  width: 100%;
+  word-wrap: break-word;
+  word-break: break-all;
+  box-sizing: border-box;
 }
 
 .diary-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 20rpx;
+  padding-top: 16rpx;
   border-top: 1rpx solid #f5f5f5;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.diary-datetime {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.diary-date {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.diary-time-separator {
+  font-size: 24rpx;
+  color: #cccccc;
 }
 
 .diary-time {
@@ -300,18 +352,20 @@ export default {
 
 .diary-actions {
   display: flex;
-  gap: 24rpx;
+  gap: 16rpx;
+  flex-shrink: 0;
 }
 
 .action-btn {
-  width: 60rpx;
-  height: 60rpx;
+  width: 56rpx;
+  height: 56rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #fff5f0;
   border-radius: 50%;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .action-btn:active {

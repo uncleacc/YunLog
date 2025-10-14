@@ -43,9 +43,6 @@
       >
         <text class="tool-text">•</text>
       </view>
-      <view class="tool-btn" @click="onShowEmojiPicker">
-        <text class="tool-icon">😊</text>
-      </view>
       <view class="tool-btn" @click="onToggleAttachmentBar">
         <text class="tool-icon">📎</text>
       </view>
@@ -69,7 +66,7 @@ export default {
       })
     }
   },
-  emits: ['toggle-format', 'toggle-list', 'show-emoji-picker', 'toggle-attachment-bar'],
+  emits: ['toggle-format', 'toggle-list', 'toggle-attachment-bar'],
   watch: {
     formatStates: {
       handler(newStates, oldStates) {
@@ -90,9 +87,6 @@ export default {
       console.log('EditorToolbar - 点击列表按钮:', listType)
       this.$emit('toggle-list', listType)
     },
-    onShowEmojiPicker() {
-      this.$emit('show-emoji-picker')
-    },
     onToggleAttachmentBar() {
       this.$emit('toggle-attachment-bar')
     }
@@ -104,21 +98,21 @@ export default {
 /* 富文本工具栏 */
 .toolbar-card {
   background: #ffffff;
-  border-radius: 24rpx;
-  padding: 24rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(255, 154, 118, 0.1);
+  border-radius: 16rpx;
+  padding: 16rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(255, 154, 118, 0.08);
 }
 
 .toolbar-row {
   display: flex;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 
 .tool-btn {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 12rpx;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 8rpx;
   background: #fff5f0;
   display: flex;
   align-items: center;
@@ -143,11 +137,11 @@ export default {
 }
 
 .tool-text {
-  font-size: 32rpx;
+  font-size: 26rpx;
   color: #333333;
 }
 
 .tool-icon {
-  font-size: 40rpx;
+  font-size: 32rpx;
 }
 </style>

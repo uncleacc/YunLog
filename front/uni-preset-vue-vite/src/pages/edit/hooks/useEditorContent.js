@@ -91,6 +91,14 @@ export function useEditorContent() {
 
       editorCtx.value.getContents({
         success: (res) => {
+          // 确保表情符号在内容中正确保存
+          if (res.html && res.text) {
+            // 检查是否包含表情符号
+            const emojiRegex = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu;
+            if (emojiRegex.test(res.text)) {
+              console.log('getEditorContent - 内容包含表情符号，正常保存');
+            }
+          }
           resolve(res)
         },
         fail: (err) => {

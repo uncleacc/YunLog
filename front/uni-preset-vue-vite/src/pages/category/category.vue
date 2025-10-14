@@ -37,8 +37,6 @@
         <view class="diary-footer">
           <view class="diary-datetime">
             <text class="diary-date">{{ FormatDate(item.createTime) }}</text>
-            <text class="diary-time-separator"></text>
-            <text class="diary-time">{{ FormatTime(item.createTime) }}</text>
           </view>
           <view class="diary-actions">
             <view class="action-btn" @click.stop="EditDiary(item.id)">
@@ -114,12 +112,7 @@ export default {
       return `${month}月${day}日 ${weekDay}`
     },
 
-    FormatTime(dateString) {
-      const date = new Date(dateString)
-      const hours = String(date.getHours()).padStart(2, '0')
-      const minutes = String(date.getMinutes()).padStart(2, '0')
-      return `${hours}:${minutes}`
-    },
+
 
     // 获取纯文本预览（使用工具函数）
     getPlainTextPreview(item) {
@@ -314,6 +307,8 @@ export default {
   word-wrap: break-word;
   word-break: break-all;
   box-sizing: border-box;
+  /* 支持表情符号显示 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 }
 
 .diary-footer {

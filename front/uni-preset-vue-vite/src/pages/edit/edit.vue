@@ -16,23 +16,6 @@
       @preview-image="handlePreviewImage"
     />
 
-    <!-- 编辑器工具栏组件 -->
-    <EditorToolbar 
-      :format-states="formatStates"
-      @toggle-format="handleToggleFormat"
-      @toggle-list="handleToggleList"
-      @show-emoji-picker="handleShowEmojiPicker"
-      @toggle-attachment-bar="handleToggleAttachmentBar"
-    />
-
-    <!-- 表情选择器组件 -->
-    <EmojiPicker 
-      v-if="showEmojiPicker"
-      :visible="showEmojiPicker"
-      @insert-emoji="handleEmojiSelect"
-      @close="handleCloseEmojiPicker"
-    />
-
     <!-- 富文本编辑器组件 -->
     <EditorArea 
       ref="editorArea"
@@ -44,11 +27,45 @@
       @editor-status-change="handleEditorStatusChange"
     />
 
+    <!-- 编辑器工具栏组件 -->
+    <EditorToolbar 
+      :format-states="formatStates"
+      @toggle-format="handleToggleFormat"
+      @toggle-list="handleToggleList"
+      @toggle-attachment-bar="handleToggleAttachmentBar"
+    />
+
+    <!-- 日记时间设置模块 -->
+    <view class="time-info-section" v-if="isEditing && currentDiaryInfo">
+      <view class="time-info-container">
+        <view class="time-main-area">
+          <view class="time-content">
+            <text class="time-label">日记时间</text>
+            <text class="time-value">{{ formatDate(currentDiaryInfo.createTime) }}</text>
+          </view>
+          <view class="time-edit-btn" @click="showDatePicker">
+            <text class="edit-icon">📅</text>
+          </view>
+        </view>
+      </view>
+      <view class="time-info-footer">
+        <text class="time-footer-text">点击日历图标可修改日记时间</text>
+      </view>
+    </view>
+
     <!-- 底部操作栏组件 -->
     <ActionBar 
       :is-saving="isSaving"
       @save="SaveDiary"
       @cancel="Cancel"
+    />
+
+    <!-- 日历选择器组件 -->
+    <CalendarPicker 
+      :visible="showCalendar"
+      :default-date="currentDiaryInfo ? currentDiaryInfo.createTime : ''"
+      @confirm="handleDateSelected"
+      @close="hideCalendar"
     />
   </view>
 </template>
@@ -57,24 +74,25 @@
 import TitleInput from './components/TitleInput.vue'
 import AttachmentManager from './components/AttachmentManager.vue'
 import EditorToolbar from './components/EditorToolbar.vue'
-import EmojiPicker from './components/EmojiPicker.vue'
 import EditorArea from './components/EditorArea.vue'
 import ActionBar from './components/ActionBar.vue'
+import CalendarPicker from './components/CalendarPicker.vue'
 
 import { useEditorFormat } from './hooks/useEditorFormat.js'
 import { useEditorContent } from './hooks/useEditorContent.js'
 import { useCategories } from './hooks/useCategories.js'
 import { useDiarySave } from './hooks/useDiarySave.js'
 import storage from '../../utils/storage.js'
+import { validateEmojiContent, hasEmoji } from '../../utils/emojiUtils.js'
 
 export default {
   components: {
     TitleInput,
     AttachmentManager,
     EditorToolbar,
-    EmojiPicker,
     EditorArea,
-    ActionBar
+    ActionBar,
+    CalendarPicker
   },
   
   setup() {
@@ -182,8 +200,9 @@ export default {
       },
       contentLength: 0,
       hasEdited: false,
-      showEmojiPicker: false,
       showAttachmentBar: false,
+      currentDiaryInfo: null, // 当前日记的完整信息（包含时间等）
+      showCalendar: false, // 是否显示日历选择器
     }
   },
 
@@ -245,21 +264,7 @@ export default {
       this.toggleList(this.editorCtx, listType)
     },
 
-    // 处理显示表情选择器
-    handleShowEmojiPicker() {
-      this.showEmojiPicker = true
-    },
 
-    // 处理关闭表情选择器
-    handleCloseEmojiPicker() {
-      this.showEmojiPicker = false
-    },
-
-    // 处理表情选择
-    handleEmojiSelect(emoji) {
-      this.insertContent(emoji)
-      this.showEmojiPicker = false
-    },
 
     // 处理切换附件栏
     handleToggleAttachmentBar() {
@@ -400,6 +405,11 @@ export default {
       const diary = storage.GetDiaryById(this.diaryId)
       if (!diary) return
 
+      // 保存完整的日记信息用于显示时间
+      this.currentDiaryInfo = {
+        ...diary
+      }
+
       // 设置表单数据
       this.formData = {
         title: diary.title || '',
@@ -441,11 +451,24 @@ export default {
         
         // 获取编辑器内容
         const editorContent = await this.getEditorContent()
+        
+        // 验证表情符号完整性
+        const emojiValidation = validateEmojiContent(editorContent.html, editorContent.text)
+        if (!emojiValidation.isValid) {
+          console.warn('SaveDiary - 表情符号验证警告:', emojiValidation)
+        } else if (emojiValidation.textEmojiCount > 0) {
+          console.log('SaveDiary - 表情符号验证通过:', {
+            emojiCount: emojiValidation.textEmojiCount,
+            emojis: emojiValidation.textEmojis
+          })
+        }
+        
         console.log('SaveDiary - 获取到编辑器内容:', {
           text: editorContent.text ? editorContent.text.substring(0, 50) + '...' : 'null',
           html: editorContent.html ? editorContent.html.substring(0, 50) + '...' : 'null',
           textLength: editorContent.text ? editorContent.text.length : 0,
-          htmlLength: editorContent.html ? editorContent.html.length : 0
+          htmlLength: editorContent.html ? editorContent.html.length : 0,
+          hasEmojis: hasEmoji(editorContent.text || '')
         })
         
         // 更新 formData 的内容
@@ -502,6 +525,77 @@ export default {
         uni.navigateBack()
       }
     },
+
+    // === 时间相关方法 ===
+    
+    // 格式化日期为 YYYY年MM月DD日 格式
+    formatDate(isoString) {
+      if (!isoString) return '--'
+      
+      const date = new Date(isoString)
+      const year = date.getFullYear()
+      const month = date.getMonth() + 1
+      const day = date.getDate()
+      const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+      const weekDay = weekDays[date.getDay()]
+      
+      return `${year}年${month}月${day}日 ${weekDay}`
+    },
+
+    // 显示日期选择器
+    showDatePicker() {
+      this.showCalendar = true
+    },
+
+    // 隐藏日历选择器
+    hideCalendar() {
+      this.showCalendar = false
+    },
+
+    // 处理日历选择的日期
+    handleDateSelected(selectedDate) {
+      this.updateDiaryTime(selectedDate)
+    },
+
+    // 更新日记时间
+    updateDiaryTime(newDate) {
+      // 保持原来的时分秒，只修改年月日
+      const originalDate = new Date(this.currentDiaryInfo.createTime)
+      const updatedDate = new Date(
+        newDate.getFullYear(),
+        newDate.getMonth(),
+        newDate.getDate(),
+        originalDate.getHours(),
+        originalDate.getMinutes(),
+        originalDate.getSeconds(),
+        originalDate.getMilliseconds()
+      )
+      
+      const newISOString = updatedDate.toISOString()
+      
+      // 更新当前显示的时间
+      this.currentDiaryInfo.createTime = newISOString
+      
+      // 立即保存到存储中
+      const result = storage.UpdateDiary(this.diaryId, {
+        ...this.formData,
+        createTime: newISOString
+      })
+      
+      if (result) {
+        uni.showToast({
+          title: '时间已更新',
+          icon: 'success'
+        })
+      } else {
+        uni.showToast({
+          title: '更新失败',
+          icon: 'none'
+        })
+        // 恢复原来的时间
+        this.LoadDiary()
+      }
+    },
   },
 }
 </script>
@@ -512,7 +606,139 @@ export default {
   background: linear-gradient(135deg, #FFF5F0 0%, #FFE5D8 100%);
   padding: 24rpx;
   padding-bottom: 200rpx;
+  display: flex;
+  flex-direction: column;
 }
 
+/* 时间信息模块样式 */
+.time-info-section {
+  margin: 32rpx 0 24rpx 0;
+  padding: 0 8rpx;
+}
+
+.time-info-container {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20rpx;
+  padding: 24rpx 32rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 154, 118, 0.08);
+  border: 1px solid rgba(255, 154, 118, 0.1);
+  backdrop-filter: blur(10rpx);
+  position: relative;
+  overflow: hidden;
+}
+
+.time-info-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3rpx;
+  background: linear-gradient(90deg, #FF9A76 0%, #FFC5A6 50%, #FF9A76 100%);
+  border-radius: 20rpx 20rpx 0 0;
+}
+
+.time-main-area {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.time-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.time-label {
+  font-size: 24rpx;
+  color: #999;
+  font-weight: 500;
+  letter-spacing: 0.5rpx;
+}
+
+.time-value {
+  font-size: 32rpx;
+  color: #333;
+  font-weight: 600;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.time-edit-btn {
+  padding: 16rpx 20rpx;
+  background: linear-gradient(135deg, #FF9A76 0%, #FFC5A6 100%);
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 12rpx rgba(255, 154, 118, 0.3);
+  transition: all 0.3s ease;
+}
+
+.time-edit-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 2rpx 8rpx rgba(255, 154, 118, 0.4);
+}
+
+.edit-icon {
+  font-size: 28rpx;
+  line-height: 1;
+}
+
+.time-info-footer {
+  margin-top: 16rpx;
+  text-align: center;
+}
+
+.time-footer-text {
+  font-size: 22rpx;
+  color: #666;
+  opacity: 0.8;
+  font-style: italic;
+  letter-spacing: 0.3rpx;
+}
+
+/* 时间信息模块响应式适配 */
+@media screen and (max-width: 750px) {
+  .time-info-container {
+    padding: 20rpx 24rpx;
+  }
+  
+  .time-label {
+    font-size: 22rpx;
+  }
+  
+  .time-value {
+    font-size: 26rpx;
+  }
+  
+  .time-footer-text {
+    font-size: 20rpx;
+  }
+  
+  .time-divider {
+    height: 50rpx;
+    margin: 0 16rpx;
+  }
+}
+
+/* 深色模式适配（如果需要的话） */
+@media (prefers-color-scheme: dark) {
+  .time-info-container {
+    background: rgba(40, 40, 40, 0.95);
+    border: 1px solid rgba(255, 154, 118, 0.2);
+  }
+  
+  .time-label {
+    color: #aaa;
+  }
+  
+  .time-value {
+    color: #fff;
+  }
+  
+  .time-footer-text {
+    color: #999;
+  }
+}
 
 </style>

@@ -5,7 +5,6 @@
       <view class="header-card">
         <view class="date-info">
           <text class="date-main">{{ FormatDate(diary.createTime) }}</text>
-          <text class="date-time">{{ FormatTime(diary.createTime) }}</text>
         </view>
       </view>
 
@@ -45,6 +44,7 @@
           v-if="diary.contentHtml" 
           class="content-richtext" 
           :nodes="diary.contentHtml"
+          :selectable="true"
         />
         <text v-else class="content-text">{{ diary.content }}</text>
       </view>
@@ -114,21 +114,16 @@ export default {
       return `${year}年${month}月${day}日 ${weekDay}`
     },
 
-    FormatTime(dateString) {
-      const date = new Date(dateString)
-      const hours = String(date.getHours()).padStart(2, '0')
-      const minutes = String(date.getMinutes()).padStart(2, '0')
-      return `${hours}:${minutes}`
-    },
+
 
     FormatFullTime(dateString) {
       const date = new Date(dateString)
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
-      const hours = String(date.getHours()).padStart(2, '0')
-      const minutes = String(date.getMinutes()).padStart(2, '0')
-      return `${year}-${month}-${day} ${hours}:${minutes}`
+      const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+      const weekDay = weekDays[date.getDay()]
+      return `${year}年${month}月${day}日 ${weekDay}`
     },
 
     PreviewAttachment(item, index) {
@@ -309,6 +304,8 @@ export default {
   white-space: pre-wrap;
   width: 100%;
   overflow-wrap: break-word;
+  /* 支持表情符号显示 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 }
 
 .content-richtext {
@@ -319,6 +316,8 @@ export default {
   word-wrap: break-word;
   width: 100%;
   overflow-wrap: break-word;
+  /* 支持表情符号显示 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 }
 
 /* 底部信息 */

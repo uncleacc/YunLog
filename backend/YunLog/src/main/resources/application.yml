@@ -1,0 +1,71 @@
+# 云日记应用配置
+spring:
+  # 应用名称
+  application:
+    name: YunLog
+  
+  # 激活本地配置
+  profiles:
+    active: local
+  
+  # 数据库配置
+  datasource:
+    url: jdbc:mysql://localhost:3306/yunlog?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format-sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+  
+  # JSON配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 100MB
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+# 无用户认证模式
+
+# 跨域配置
+cors:
+  allowed-origins: "*"
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+
+# 阿里云 OSS 配置
+aliyun:
+  oss:
+    endpoint: oss-cn-beijing.aliyuncs.com
+    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID}
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET}
+    bucket-name: yunmem
+    # 文件访问URL前缀（如果使用自定义域名可以修改）
+    url-prefix: https://yunmem.oss-cn-beijing.aliyuncs.com/
+    # 上传文件夹路径
+    folder: diary/images/
+
+# 日志配置
+logging:
+  level:
+    "[io.github.uncleacc.yunlog]": DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

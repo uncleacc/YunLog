@@ -1,0 +1,26 @@
+# Maven
+backend/YunLog/target/
+backend/YunLog/*.log
+backend/YunLog/.mvn/
+backend/YunLog/mvnw
+backend/YunLog/mvnw.cmd
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# 本地配置文件（包含敏感信息）
+backend/YunLog/src/main/resources/application-local.yml
+backend/YunLog/src/main/resources/application-dev.yml
+backend/YunLog/src/main/resources/application-prod.yml
+
+# Node
+frontend/YunLog/node_modules/
+frontend/YunLog/dist/
+frontend/YunLog/unpackage/
+
+# 日志文件
+*.log
+logs/

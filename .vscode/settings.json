@@ -1,0 +1,5 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "editor.fontSize": 7,
+    "java.compile.nullAnalysis.mode": "automatic"
+}

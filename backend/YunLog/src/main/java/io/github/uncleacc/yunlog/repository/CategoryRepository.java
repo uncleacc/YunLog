@@ -8,28 +8,28 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 分类数据访问层 - 无用户认证版本
+ * 分类数据访问层
  */
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     
     /**
-     * 查找所有分类列表
+     * 查找所有分类列表（按排序字段）- 按用户ID过滤
      */
-    List<Category> findAllByOrderByCreateTimeAsc();
+    List<Category> findByUserIdOrderBySortOrderAscCreateTimeAsc(Long userId);
     
     /**
-     * 查找默认分类
+     * 查找默认分类 - 按用户ID过滤
      */
-    Optional<Category> findByIsDefaultTrue();
+    Optional<Category> findByUserIdAndIsDefaultTrue(Long userId);
     
     /**
-     * 检查是否存在指定名称的分类
+     * 检查是否存在指定名称的分类 - 按用户ID过滤
      */
-    boolean existsByName(String name);
+    boolean existsByUserIdAndName(Long userId, String name);
     
     /**
-     * 统计分类数量
+     * 统计分类数量 - 按用户ID过滤
      */
-    long count();
+    long countByUserId(Long userId);
 }

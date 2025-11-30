@@ -1,8 +1,11 @@
 package io.github.uncleacc.yunlog.service;
 
 import io.github.uncleacc.yunlog.common.PageResponse;
+import io.github.uncleacc.yunlog.context.UserContext;
 import io.github.uncleacc.yunlog.dto.request.CreateDiaryRequest;
 import io.github.uncleacc.yunlog.dto.request.UpdateDiaryTimeRequest;
+import io.github.uncleacc.yunlog.dto.response.DiaryWithAttachmentsResponse;
+import io.github.uncleacc.yunlog.entity.Attachment;
 import io.github.uncleacc.yunlog.entity.Diary;
 import io.github.uncleacc.yunlog.exception.BusinessException;
 import io.github.uncleacc.yunlog.repository.AttachmentRepository;
@@ -15,10 +18,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 日记服务
@@ -33,26 +36,36 @@ public class DiaryService {
     private final AttachmentRepository attachmentRepository;
     
     /**
-     * 分页获取日记列表
+     * 分页获取日记列表（包含附件）
      */
-    public PageResponse<Diary> getDiaryList(Integer page, Integer limit, Long categoryId) {
+    public PageResponse<DiaryWithAttachmentsResponse> getDiaryList(Integer page, Integer limit, Long categoryId) {
+        Long userId = UserContext.getUserId();
         Pageable pageable = PageRequest.of(page - 1, limit);
         Page<Diary> diaryPage;
         
         if (categoryId != null) {
-            // 验证分类是否存在
+            // 验证分类是否存在并属于当前用户
             categoryRepository.findById(categoryId)
+                .filter(category -> category.getUserId().equals(userId))
                 .orElseThrow(() -> new BusinessException(404, "分类不存在"));
             
-            diaryPage = diaryRepository.findByCategoryIdAndIsDeletedFalseOrderByCreateTimeDesc(
-                categoryId, pageable);
+            diaryPage = diaryRepository.findByUserIdAndCategoryIdAndIsDeletedFalseOrderByCreateTimeDesc(
+                userId, categoryId, pageable);
         } else {
-            diaryPage = diaryRepository.findByIsDeletedFalseOrderByCreateTimeDesc(
-                pageable);
+            diaryPage = diaryRepository.findByUserIdAndIsDeletedFalseOrderByCreateTimeDesc(
+                userId, pageable);
         }
         
+        // 为每个日记加载附件
+        List<DiaryWithAttachmentsResponse> diariesWithAttachments = diaryPage.getContent().stream()
+            .map(diary -> {
+                List<Attachment> attachments = attachmentRepository.findByDiaryIdOrderByCreateTimeAsc(diary.getId());
+                return DiaryWithAttachmentsResponse.from(diary, attachments);
+            })
+            .collect(Collectors.toList());
+        
         return PageResponse.of(
-            diaryPage.getContent(),
+            diariesWithAttachments,
             diaryPage.getTotalElements(),
             page,
             limit
@@ -63,7 +76,9 @@ public class DiaryService {
      * 根据ID获取日记详情
      */
     public Diary getDiaryById(Long id) {
+        Long userId = UserContext.getUserId();
         return diaryRepository.findByIdAndIsDeletedFalse(id)
+            .filter(diary -> diary.getUserId().equals(userId))
             .orElseThrow(() -> new BusinessException(404, "日记不存在"));
     }
     
@@ -72,15 +87,18 @@ public class DiaryService {
      */
     @Transactional
     public Diary createDiary(CreateDiaryRequest request) {
-        // 验证分类是否存在
+        Long userId = UserContext.getUserId();
+        
+        // 验证分类是否存在并属于当前用户
         categoryRepository.findById(request.getCategoryId())
+            .filter(category -> category.getUserId().equals(userId))
             .orElseThrow(() -> new BusinessException(404, "分类不存在"));
         
         Diary diary = new Diary();
-        diary.setTitle(StringUtils.hasText(request.getTitle()) ? request.getTitle() : "无标题");
         diary.setContent(request.getContent());
         diary.setContentHtml(request.getContentHtml());
         diary.setCategoryId(request.getCategoryId());
+        diary.setUserId(userId);
         diary.setIsDeleted(false);
         
         return diaryRepository.save(diary);
@@ -93,13 +111,12 @@ public class DiaryService {
     public Diary updateDiary(Long id, CreateDiaryRequest request) {
         Diary diary = getDiaryById(id);
         
-        // 如果要更换分类，验证新分类是否存在
+        // 如果要更换分类,验证新分类是否存在
         if (!diary.getCategoryId().equals(request.getCategoryId())) {
             categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new BusinessException(404, "分类不存在"));
         }
         
-        diary.setTitle(StringUtils.hasText(request.getTitle()) ? request.getTitle() : "无标题");
         diary.setContent(request.getContent());
         diary.setContentHtml(request.getContentHtml());
         diary.setCategoryId(request.getCategoryId());
@@ -147,8 +164,9 @@ public class DiaryService {
      * 获取垃圾桶列表
      */
     public PageResponse<Diary> getTrashList(Integer page, Integer limit) {
+        Long userId = UserContext.getUserId();
         Pageable pageable = PageRequest.of(page - 1, limit);
-        Page<Diary> diaryPage = diaryRepository.findByIsDeletedTrueOrderByDeletedTimeDesc(pageable);
+        Page<Diary> diaryPage = diaryRepository.findByUserIdAndIsDeletedTrueOrderByDeletedTimeDesc(userId, pageable);
         
         return PageResponse.of(
             diaryPage.getContent(),
@@ -192,8 +210,9 @@ public class DiaryService {
      */
     @Transactional
     public void clearTrash() {
-        Page<Diary> trashDiaries = diaryRepository.findByIsDeletedTrueOrderByDeletedTimeDesc(
-            PageRequest.of(0, Integer.MAX_VALUE));
+        Long userId = UserContext.getUserId();
+        Page<Diary> trashDiaries = diaryRepository.findByUserIdAndIsDeletedTrueOrderByDeletedTimeDesc(
+            userId, PageRequest.of(0, Integer.MAX_VALUE));
         
         // 删除所有垃圾桶中日记的附件
         for (Diary diary : trashDiaries.getContent()) {
@@ -205,14 +224,23 @@ public class DiaryService {
     }
     
     /**
-     * 搜索日记
+     * 搜索日记（包含附件）
      */
-    public PageResponse<Diary> searchDiaries(String keyword, Integer page, Integer limit) {
+    public PageResponse<DiaryWithAttachmentsResponse> searchDiaries(String keyword, Integer page, Integer limit) {
+        Long userId = UserContext.getUserId();
         Pageable pageable = PageRequest.of(page - 1, limit);
-        Page<Diary> diaryPage = diaryRepository.searchDiaries(keyword, pageable);
+        Page<Diary> diaryPage = diaryRepository.searchDiaries(userId, keyword, pageable);
+        
+        // 为每个日记加载附件
+        List<DiaryWithAttachmentsResponse> diariesWithAttachments = diaryPage.getContent().stream()
+            .map(diary -> {
+                List<Attachment> attachments = attachmentRepository.findByDiaryIdOrderByCreateTimeAsc(diary.getId());
+                return DiaryWithAttachmentsResponse.from(diary, attachments);
+            })
+            .collect(Collectors.toList());
         
         return PageResponse.of(
-            diaryPage.getContent(),
+            diariesWithAttachments,
             diaryPage.getTotalElements(),
             page,
             limit

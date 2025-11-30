@@ -20,9 +20,6 @@ public class Diary {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false, length = 200)
-    private String title;
-    
     @Column(columnDefinition = "TEXT")
     private String content;
     
@@ -31,6 +28,9 @@ public class Diary {
     
     @Column(name = "category_id", nullable = false)
     private Long categoryId;
+    
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
     
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;

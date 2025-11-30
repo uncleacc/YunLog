@@ -5,6 +5,160 @@
 - **Base URL**: `http://localhost:8080/api/v1`
 - **OSS Bucket**: `yunlog-diary`
 - **OSS Region**: `oss-cn-hangzhou`
+- **认证方式**: JWT Token (Bearer Authentication)
+
+---
+
+## 0. 用户认证 API 🔐
+
+### 0.1 用户注册
+```http
+POST /auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "123456",
+  "phone": "13800138000"
+}
+```
+
+**请求参数**:
+- `username` (必填): 用户名，3-20个字符，仅支持字母、数字和下划线
+- `password` (必填): 密码，6-20个字符
+- `phone` (可选): 手机号
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "注册成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsImlhdCI6MTY5ODEyMzQ1NiwiZXhwIjoxNjk4NzI4MjU2fQ.xyz123",
+    "userInfo": {
+      "id": 1,
+      "username": "testuser",
+      "phone": "13800138000",
+      "wechatOpenid": null
+    }
+  }
+}
+```
+
+**说明**:
+- 注册成功后自动登录，返回token
+- 系统会自动为新用户创建默认分类
+- token有效期为7天
+
+### 0.2 账号密码登录
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "123456"
+}
+```
+
+**请求参数**:
+- `username` (必填): 用户名
+- `password` (必填): 密码
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "登录成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsImlhdCI6MTY5ODEyMzQ1NiwiZXhwIjoxNjk4NzI4MjU2fQ.xyz123",
+    "userInfo": {
+      "id": 1,
+      "username": "testuser",
+      "phone": "13800138000",
+      "wechatOpenid": null
+    }
+  }
+}
+```
+
+### 0.3 微信登录
+```http
+POST /auth/wechat/login
+Content-Type: application/json
+
+{
+  "code": "081xYZ2w3ABCDE2wx..."
+}
+```
+
+**请求参数**:
+- `code` (必填): 微信小程序登录code，通过`wx.login()`获取
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "登录成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiJ9...",
+    "userInfo": {
+      "id": 2,
+      "username": "wx_abc12345",
+      "phone": null,
+      "wechatOpenid": "oABC123xyz..."
+    }
+  }
+}
+```
+
+**说明**:
+- 首次微信登录会自动创建用户账号
+- 自动生成用户名格式: `wx_{openid前8位}`
+- 同一个微信openid只会创建一次用户
+
+### 0.4 登出
+```http
+POST /auth/logout
+Authorization: Bearer {token}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "登出成功"
+}
+```
+
+**说明**:
+- 实际上是客户端删除token即可
+- 服务端使用无状态JWT，不需要特殊处理
+
+### 0.5 使用Token访问API
+所有需要认证的API（除了注册和登录）都需要在请求头中携带token：
+
+```http
+GET /diaries
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+```
+
+**请求头格式**:
+```
+Authorization: Bearer {your_token_here}
+```
+
+**认证失败响应** (401):
+```json
+{
+  "error": "未授权，请先登录"
+}
+```
+
+### 0.6 测试账号
+系统预置了一个测试账号（数据库迁移时创建）：
+- **用户名**: `test`
+- **密码**: `123456`
 
 ---
 
@@ -299,12 +453,15 @@ Content-Type: application/json
 
 ## 注意事项
 
-1. **级联删除**: 永久删除日记会同时删除附件记录和 OSS 文件
-2. **默认分类**: 系统必须保留一个默认分类,删除其他分类时日记会移至默认分类
-3. **软删除**: 普通删除只是标记 `is_deleted=true`,不会删除 OSS 文件
-4. **文件命名**: OSS 文件按日期分文件夹存储: `diary/images/yyyyMMdd/UUID.ext`
-5. **URL 格式**: 附件 URL 为完整的 OSS 访问地址
-6. **并发上传**: 支持批量上传,但建议每批不超过 10 张图片
+1. **用户认证**: 除了注册和登录接口，其他所有API都需要在请求头中携带token
+2. **数据隔离**: 所有数据按用户ID严格隔离，用户只能访问自己的数据
+3. **级联删除**: 永久删除日记会同时删除附件记录和 OSS 文件
+4. **默认分类**: 系统必须保留一个默认分类,删除其他分类时日记会移至默认分类
+5. **软删除**: 普通删除只是标记 `is_deleted=true`,不会删除 OSS 文件
+6. **文件命名**: OSS 文件按日期分文件夹存储: `diary/images/yyyyMMdd/UUID.ext`
+7. **URL 格式**: 附件 URL 为完整的 OSS 访问地址
+8. **并发上传**: 支持批量上传,但建议每批不超过 10 张图片
+9. **Token有效期**: JWT token默认有效期为7天，过期需重新登录
 
 ---
 
@@ -339,6 +496,97 @@ Content-Type: application/json
 ```
 
 ### curl 测试示例
+
+#### 0. 用户认证测试 🔐
+
+```bash
+# 1. 用户注册
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "password": "123456",
+    "phone": "13800138000"
+  }'
+
+# 2. 用户登录
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "test",
+    "password": "123456"
+  }'
+
+# 响应示例（保存返回的token）:
+# {
+#   "code": 200,
+#   "data": {
+#     "token": "eyJhbGciOiJIUzI1NiJ9...",
+#     "userInfo": { "id": 1, "username": "test" }
+#   }
+# }
+
+# 3. 使用token访问需要认证的API
+# 将上一步获取的token替换到下面的{YOUR_TOKEN}
+TOKEN="eyJhbGciOiJIUzI1NiJ9..."
+
+# 获取分类列表（需要token）
+curl -X GET http://localhost:8080/api/v1/categories \
+  -H "Authorization: Bearer $TOKEN"
+
+# 创建日记（需要token）
+curl -X POST http://localhost:8080/api/v1/diaries \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "今天天气不错",
+    "contentHtml": "<p>今天天气不错</p>",
+    "categoryId": 1
+  }'
+
+# 4. 登出
+curl -X POST http://localhost:8080/api/v1/auth/logout \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**认证流程说明**:
+1. 首次使用：注册账号 → 获取token
+2. 后续使用：登录 → 获取token
+3. 所有业务API都需要携带token
+4. token有效期7天，过期需重新登录
+
+**快速测试脚本**:
+```bash
+# 保存为 test-auth.sh
+#!/bin/bash
+
+# 登录获取token
+echo "=== 1. 登录测试 ==="
+RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"123456"}')
+
+echo $RESPONSE | jq '.'
+
+# 提取token
+TOKEN=$(echo $RESPONSE | jq -r '.data.token')
+echo "Token: $TOKEN"
+
+# 使用token访问API
+echo -e "\n=== 2. 访问分类列表 ==="
+curl -s -X GET http://localhost:8080/api/v1/categories \
+  -H "Authorization: Bearer $TOKEN" | jq '.'
+
+echo -e "\n=== 3. 创建日记 ==="
+curl -s -X POST http://localhost:8080/api/v1/diaries \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "测试日记",
+    "contentHtml": "<p>测试日记</p>",
+    "categoryId": 1
+  }' | jq '.'
+```
 
 #### 1. 图片上传测试
 ```bash
@@ -387,15 +635,118 @@ curl -X POST http://localhost:8080/api/v1/upload/temp-image \
 ```
 
 #### 2. 其他 API 测试
+
+**重要**: 以下所有API都需要携带token！
+
 ```bash
-# 创建日记
-curl -X POST http://localhost:8080/api/v1/diaries \
+# 先登录获取token
+TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"title":"测试","content":"内容","categoryId":1}'
+  -d '{"username":"test","password":"123456"}' | jq -r '.data.token')
 
-# 获取日记列表
-curl http://localhost:8080/api/v1/diaries?page=1&limit=10
+# 创建日记（需要token）
+curl -X POST http://localhost:8080/api/v1/diaries \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"测试内容","contentHtml":"<p>测试内容</p>","categoryId":1}'
 
-# 删除分类
-curl -X DELETE http://localhost:8080/api/v1/categories/2
+# 获取日记列表（需要token）
+curl -X GET "http://localhost:8080/api/v1/diaries?page=1&limit=10" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 创建分类（需要token）
+curl -X POST http://localhost:8080/api/v1/categories \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"工作","icon":"💼","color":"#4CAF50"}'
+
+# 上传图片（需要token）
+curl -X POST http://localhost:8080/api/v1/upload/image \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/path/to/image.jpg" \
+  -F "diaryId=1"
+
+# 删除分类（需要token）
+curl -X DELETE http://localhost:8080/api/v1/categories/2 \
+  -H "Authorization: Bearer $TOKEN"
 ```
+
+---
+
+## 数据隔离说明 🔒
+
+用户认证系统实现后，所有数据都按用户ID进行严格隔离：
+
+### 隔离规则
+1. **日记隔离**: 每个用户只能查看、编辑、删除自己的日记
+2. **分类隔离**: 每个用户有独立的分类系统
+3. **附件隔离**: 附件跟随日记，只能访问自己日记的附件
+4. **回收站隔离**: 每个用户有独立的回收站
+
+### 自动操作
+- **注册时**: 自动创建默认分类
+- **创建日记**: 自动关联当前登录用户
+- **创建分类**: 自动关联当前登录用户
+
+### 错误处理
+- **未登录**: 返回401错误，提示"未授权，请先登录"
+- **访问他人数据**: 返回404错误，提示"资源不存在"
+
+---
+
+## 常见问题 FAQ
+
+### Q1: 如何获取token？
+A: 通过注册或登录API获取，保存返回的`data.token`字段。
+
+### Q2: token如何使用？
+A: 在请求头中添加: `Authorization: Bearer {token}`
+
+### Q3: token过期了怎么办？
+A: token有效期7天，过期后需要重新登录获取新token。
+
+### Q4: 如何测试多用户数据隔离？
+A: 
+```bash
+# 1. 注册用户A
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"userA","password":"123456"}'
+# 保存tokenA
+
+# 2. 注册用户B
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"userB","password":"123456"}'
+# 保存tokenB
+
+# 3. 用户A创建日记
+curl -X POST http://localhost:8080/api/v1/diaries \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"用户A的日记","contentHtml":"<p>用户A的日记</p>","categoryId":1}'
+
+# 4. 用户B获取日记列表（看不到用户A的日记）
+curl -X GET http://localhost:8080/api/v1/diaries \
+  -H "Authorization: Bearer $TOKEN_B"
+```
+
+### Q5: 微信登录如何测试？
+A: 微信登录需要在微信小程序环境中测试，通过`wx.login()`获取code后调用API。
+
+---
+
+## 版本更新记录
+
+### v2.0.0 (2025-10-28)
+- ✅ 新增用户认证系统（注册、登录、微信登录）
+- ✅ 实现JWT token认证机制
+- ✅ 实现多用户数据隔离
+- ✅ 新用户自动创建默认分类
+- ✅ 所有API添加token验证
+
+### v1.0.0 (2025-10-14)
+- 初始版本，无用户认证模式
+- 基础日记、分类、附件管理功能
+
+````

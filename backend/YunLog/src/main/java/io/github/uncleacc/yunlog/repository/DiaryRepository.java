@@ -13,20 +13,20 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 日记数据访问层 - 无用户认证版本
+ * 日记数据访问层
  */
 @Repository
 public interface DiaryRepository extends JpaRepository<Diary, Long> {
     
     /**
-     * 分页查询日记列表（未删除）
+     * 分页查询日记列表（未删除）- 按用户ID过滤
      */
-    Page<Diary> findByIsDeletedFalseOrderByCreateTimeDesc(Pageable pageable);
+    Page<Diary> findByUserIdAndIsDeletedFalseOrderByCreateTimeDesc(Long userId, Pageable pageable);
     
     /**
-     * 根据分类ID分页查询日记列表（未删除）
+     * 根据分类ID分页查询日记列表（未删除）- 按用户ID过滤
      */
-    Page<Diary> findByCategoryIdAndIsDeletedFalseOrderByCreateTimeDesc(Long categoryId, Pageable pageable);
+    Page<Diary> findByUserIdAndCategoryIdAndIsDeletedFalseOrderByCreateTimeDesc(Long userId, Long categoryId, Pageable pageable);
     
     /**
      * 根据日记ID查找日记（未删除）
@@ -34,9 +34,9 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
     Optional<Diary> findByIdAndIsDeletedFalse(Long id);
     
     /**
-     * 查找垃圾桶中的日记列表
+     * 查找垃圾桶中的日记列表 - 按用户ID过滤
      */
-    Page<Diary> findByIsDeletedTrueOrderByDeletedTimeDesc(Pageable pageable);
+    Page<Diary> findByUserIdAndIsDeletedTrueOrderByDeletedTimeDesc(Long userId, Pageable pageable);
     
     /**
      * 根据日记ID查找垃圾桶中的日记
@@ -44,14 +44,14 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
     Optional<Diary> findByIdAndIsDeletedTrue(Long id);
     
     /**
-     * 统计日记总数（未删除）
+     * 统计日记总数（未删除）- 按用户ID过滤
      */
-    long countByIsDeletedFalse();
+    long countByUserIdAndIsDeletedFalse(Long userId);
     
     /**
-     * 统计分类下的日记数量（未删除）
+     * 统计分类下的日记数量（未删除）- 按用户ID过滤
      */
-    long countByCategoryIdAndIsDeletedFalse(Long categoryId);
+    long countByUserIdAndCategoryIdAndIsDeletedFalse(Long userId, Long categoryId);
     
     /**
      * 根据分类ID查找最近的日记
@@ -64,12 +64,12 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
     List<Diary> findByCategoryId(Long categoryId);
     
     /**
-     * 搜索日记（标题和内容）
+     * 搜索日记（内容）- 按用户ID过滤
      */
-    @Query("SELECT d FROM Diary d WHERE d.isDeleted = false AND " +
-           "(d.title LIKE %:keyword% OR d.content LIKE %:keyword%) " +
+    @Query("SELECT d FROM Diary d WHERE d.userId = :userId AND d.isDeleted = false AND " +
+           "d.content LIKE %:keyword% " +
            "ORDER BY d.createTime DESC")
-    Page<Diary> searchDiaries(@Param("keyword") String keyword, Pageable pageable);
+    Page<Diary> searchDiaries(@Param("userId") Long userId, @Param("keyword") String keyword, Pageable pageable);
     
     /**
      * 根据时间范围查询日记

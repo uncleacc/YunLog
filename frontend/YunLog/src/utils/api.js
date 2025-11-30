@@ -5,6 +5,39 @@
 import { get, post, put, del, upload } from './request.js'
 import { parseDate } from './textUtils.js'
 
+// ==================== 认证管理 API ====================
+
+/**
+ * 发送短信验证码
+ * @param {Object} data - { phone }
+ */
+export function sendSmsCode(data) {
+  return post('/api/v1/auth/sms/send', data, { loadingText: '发送中...' })
+}
+
+/**
+ * 手机验证码登录
+ * @param {Object} data - { phone, code }
+ */
+export function phoneLogin(data) {
+  return post('/api/v1/auth/phone/login', data, { loadingText: '登录中...' })
+}
+
+/**
+ * 微信登录
+ * @param {Object} data - { code }
+ */
+export function wechatLogin(data) {
+  return post('/api/v1/auth/wechat/login', data, { loadingText: '登录中...' })
+}
+
+/**
+ * 登出
+ */
+export function logout() {
+  return post('/api/v1/auth/logout', {}, { loading: false, showError: false })
+}
+
 // ==================== 日记管理 API ====================
 
 /**
@@ -22,7 +55,7 @@ export function getDiaryList(params = {}) {
     queryParams.keyword = keyword
   }
   
-  return get('/diaries', queryParams)
+  return get('/api/v1/diaries', queryParams)
 }
 
 /**
@@ -30,7 +63,7 @@ export function getDiaryList(params = {}) {
  * @param {Number} id - 日记ID
  */
 export function getDiaryDetail(id) {
-  return get(`/diaries/${id}`)
+  return get(`/api/v1/diaries/${id}`)
 }
 
 /**
@@ -38,7 +71,7 @@ export function getDiaryDetail(id) {
  * @param {Object} data - { title, content, contentHtml, categoryId }
  */
 export function createDiary(data) {
-  return post('/diaries', data, { loadingText: '保存中...' })
+  return post('/api/v1/diaries', data, { loadingText: '保存中...' })
 }
 
 /**
@@ -47,7 +80,7 @@ export function createDiary(data) {
  * @param {Object} data - { title, content, contentHtml, categoryId }
  */
 export function updateDiary(id, data) {
-  return put(`/diaries/${id}`, data, { loadingText: '保存中...' })
+  return put(`/api/v1/diaries/${id}`, data, { loadingText: '保存中...' })
 }
 
 /**
@@ -56,7 +89,7 @@ export function updateDiary(id, data) {
  * @param {Object} data - { createTime }
  */
 export function updateDiaryTime(id, data) {
-  return put(`/diaries/${id}/time`, data, { loadingText: '更新时间中...' })
+  return put(`/api/v1/diaries/${id}/time`, data, { loadingText: '更新时间中...' })
 }
 
 /**
@@ -64,7 +97,7 @@ export function updateDiaryTime(id, data) {
  * @param {Number} id - 日记ID
  */
 export function deleteDiary(id) {
-  return del(`/diaries/${id}`, {}, { loadingText: '删除中...' })
+  return del(`/api/v1/diaries/${id}`, {}, { loadingText: '删除中...' })
 }
 
 /**
@@ -72,7 +105,7 @@ export function deleteDiary(id) {
  * @param {Array} ids - 日记ID数组
  */
 export function batchDeleteDiaries(ids) {
-  return del('/diaries/batch', { ids }, { loadingText: '删除中...' })
+  return del('/api/v1/diaries/batch', { ids }, { loadingText: '删除中...' })
 }
 
 // ==================== 分类管理 API ====================
@@ -81,7 +114,7 @@ export function batchDeleteDiaries(ids) {
  * 获取分类列表
  */
 export function getCategoryList() {
-  return get('/categories', {}, { loading: false })
+  return get('/api/v1/categories', {}, { loading: false })
 }
 
 /**
@@ -89,7 +122,7 @@ export function getCategoryList() {
  * @param {Number} id - 分类ID
  */
 export function getCategoryDetail(id) {
-  return get(`/categories/${id}`)
+  return get(`/api/v1/categories/${id}`)
 }
 
 /**
@@ -97,7 +130,7 @@ export function getCategoryDetail(id) {
  * @param {Object} data - { name, icon, color }
  */
 export function createCategory(data) {
-  return post('/categories', data, { loadingText: '创建中...' })
+  return post('/api/v1/categories', data, { loadingText: '创建中...' })
 }
 
 /**
@@ -106,7 +139,7 @@ export function createCategory(data) {
  * @param {Object} data - { name, icon, color }
  */
 export function updateCategory(id, data) {
-  return put(`/categories/${id}`, data, { loadingText: '保存中...' })
+  return put(`/api/v1/categories/${id}`, data, { loadingText: '保存中...' })
 }
 
 /**
@@ -114,7 +147,17 @@ export function updateCategory(id, data) {
  * @param {Number} id - 分类ID
  */
 export function deleteCategory(id) {
-  return del(`/categories/${id}`, {}, { loadingText: '删除中...' })
+  return del(`/api/v1/categories/${id}`, {}, { loadingText: '删除中...' })
+}
+
+/**
+ * 批量更新分类排序
+ * @param {Array} categorySortList - [{ id, sortOrder }, ...]
+ */
+export function updateCategorySort(categorySortList) {
+  return put('/api/v1/categories/sort', { categorySortList }, { 
+    loadingText: '保存排序中...' 
+  })
 }
 
 // ==================== 回收站管理 API ====================
@@ -125,7 +168,7 @@ export function deleteCategory(id) {
  */
 export function getTrashList(params = {}) {
   const { page = 1, limit = 20 } = params
-  return get('/trash', { page, limit })
+  return get('/api/v1/trash', { page, limit })
 }
 
 /**
@@ -133,7 +176,7 @@ export function getTrashList(params = {}) {
  * @param {Number} id - 日记ID
  */
 export function restoreDiary(id) {
-  return post(`/trash/${id}/restore`, {}, { loadingText: '恢复中...' })
+  return post(`/api/v1/trash/${id}/restore`, {}, { loadingText: '恢复中...' })
 }
 
 /**
@@ -141,14 +184,14 @@ export function restoreDiary(id) {
  * @param {Number} id - 日记ID
  */
 export function permanentDeleteDiary(id) {
-  return del(`/trash/${id}`, {}, { loadingText: '删除中...' })
+  return del(`/api/v1/trash/${id}`, {}, { loadingText: '删除中...' })
 }
 
 /**
  * 清空回收站
  */
 export function clearTrash() {
-  return del('/trash/clear', {}, { loadingText: '清空中...' })
+  return del('/api/v1/trash/clear', {}, { loadingText: '清空中...' })
 }
 
 /**
@@ -156,7 +199,7 @@ export function clearTrash() {
  * @param {Array} ids - 日记ID数组
  */
 export function batchRestoreDiaries(ids) {
-  return post('/trash/batch-restore', { ids }, { loadingText: '恢复中...' })
+  return post('/api/v1/trash/batch-restore', { ids }, { loadingText: '恢复中...' })
 }
 
 // ==================== 附件管理 API ====================
@@ -166,7 +209,7 @@ export function batchRestoreDiaries(ids) {
  * @param {Number} diaryId - 日记ID
  */
 export function getAttachmentsByDiary(diaryId) {
-  return get(`/attachments/diary/${diaryId}`, {}, { loading: false })
+  return get(`/api/v1/attachments/diary/${diaryId}`, {}, { loading: false })
 }
 
 /**
@@ -174,7 +217,7 @@ export function getAttachmentsByDiary(diaryId) {
  * @param {Object} data - { diaryId, url }
  */
 export function createAttachment(data) {
-  return post('/attachments', data, { loading: false })
+  return post('/api/v1/attachments', data, { loading: false })
 }
 
 /**
@@ -182,7 +225,7 @@ export function createAttachment(data) {
  * @param {Object} data - { diaryId, urls }
  */
 export function batchCreateAttachments(data) {
-  return post('/attachments/batch', data, { loading: false })
+  return post('/api/v1/attachments/batch', data, { loading: false })
 }
 
 /**
@@ -190,7 +233,7 @@ export function batchCreateAttachments(data) {
  * @param {Number} id - 附件ID
  */
 export function deleteAttachment(id) {
-  return del(`/attachments/${id}`, {}, { loading: false })
+  return del(`/api/v1/attachments/${id}`, {}, { loading: false })
 }
 
 // ==================== 文件上传 API ====================
@@ -202,7 +245,7 @@ export function deleteAttachment(id) {
  */
 export function uploadImage(filePath, diaryId) {
   const formData = diaryId ? { diaryId } : {}
-  return upload('/upload/image', filePath, formData, {
+  return upload('/api/v1/upload/image', filePath, formData, {
     name: 'file',
     loadingText: '上传中...'
   })
@@ -213,7 +256,7 @@ export function uploadImage(filePath, diaryId) {
  * @param {String} filePath - 图片路径
  */
 export function uploadTempImage(filePath) {
-  return upload('/upload/temp-image', filePath, {}, {
+  return upload('/api/v1/upload/temp-image', filePath, {}, {
     name: 'file',
     loadingText: '上传中...'
   })
@@ -235,7 +278,7 @@ export function uploadImages(filePaths, diaryId) {
  * @param {String} url - 文件URL
  */
 export function deleteOssFile(url) {
-  return del(`/upload/file?url=${encodeURIComponent(url)}`, {}, {
+  return del(`/api/v1/upload/file?url=${encodeURIComponent(url)}`, {}, {
     loading: false
   })
 }
@@ -312,11 +355,18 @@ export function getGlobalStats() {
 }
 
 export default {
+  // 认证
+  sendSmsCode,
+  phoneLogin,
+  wechatLogin,
+  logout,
+  
   // 日记
   getDiaryList,
   getDiaryDetail,
   createDiary,
   updateDiary,
+  updateDiaryTime,
   deleteDiary,
   batchDeleteDiaries,
   

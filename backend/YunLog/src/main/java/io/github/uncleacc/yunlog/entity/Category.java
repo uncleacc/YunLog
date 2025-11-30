@@ -29,8 +29,14 @@ public class Category {
     @Column(length = 20)
     private String color;
     
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+    
     @Column(name = "is_default", nullable = false)
     private Boolean isDefault = false;
+    
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 0;
     
     @Column(name = "create_time", nullable = false)
     @CreationTimestamp

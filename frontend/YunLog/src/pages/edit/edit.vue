@@ -1,64 +1,136 @@
 <template>
   <view class="edit-page">
-    <!-- 标题输入组件 -->
-    <TitleInput 
-      :title="formData.title"
-      @update:title="handleTitleUpdate"
-    />
-
-    <!-- 附件管理组件 -->
-    <AttachmentManager 
-      v-if="formData.attachments.length > 0 || showAttachmentBar"
-      :attachments="formData.attachments"
-      :showAttachmentBar="showAttachmentBar"
-      @add-attachment="handleAddAttachment"
-      @remove-attachment="handleRemoveAttachment"
-      @preview-image="handlePreviewImage"
-    />
-
-    <!-- 富文本编辑器组件 -->
-    <EditorArea 
-      ref="editorArea"
-      :content-length="contentLength"
-      @editor-ready="handleEditorReady"
-      @editor-input="handleEditorInput"
-      @editor-selection-change="handleEditorSelectionChange"
-      @editor-context-ready="handleEditorContextReady"
-      @editor-status-change="handleEditorStatusChange"
-    />
-
-    <!-- 编辑器工具栏组件 -->
-    <EditorToolbar 
-      :format-states="formatStates"
-      @toggle-format="handleToggleFormat"
-      @toggle-list="handleToggleList"
-      @toggle-attachment-bar="handleToggleAttachmentBar"
-    />
-
-    <!-- 日记时间设置模块 -->
-    <view class="time-info-section" v-if="isEditing && currentDiaryInfo">
-      <view class="time-info-container">
-        <view class="time-main-area">
-          <view class="time-content">
-            <text class="time-label">日记时间</text>
-            <text class="time-value">{{ formatDate(currentDiaryInfo.createTime) }}</text>
-          </view>
-          <view class="time-edit-btn" @click="showDatePicker">
-            <text class="edit-icon">📅</text>
+    <!-- 顶部状态栏：左侧日期入口，右侧保存按钮 -->
+    <view class="top-status-bar" id="top-status-bar">
+      <view class="top-bar-left">
+        <view class="top-date-card" @click="showDatePicker">
+          <text class="date-day">{{ topDate.day }}</text>
+          <view class="date-right">
+            <text class="date-line1">{{ topDate.dateLine }}</text>
+            <text class="date-line2">{{ topDate.timeLine }}</text>
           </view>
         </view>
       </view>
-      <view class="time-info-footer">
-        <text class="time-footer-text">点击日历图标可修改日记时间</text>
+      <view class="top-bar-right">
+        <view class="top-save-btn" @click="SaveDiary" :class="{ 'saving': isSaving }">
+          <text class="top-save-text">{{ isSaving ? '保存中' : '保存' }}</text>
+        </view>
+      </view>
+    </view>
+    <!-- 内容区包裹：为顶部状态栏预留空间 -->
+    <view 
+      class="content-wrapper"
+      :style="{ paddingTop: (topBarHeight && topBarHeight > 0) ? (topBarHeight + 'px') : '120rpx' }"
+    >
+      <!-- 附件预览区域（仅在有附件时显示） -->
+      <view v-if="formData.attachments.length > 0" class="attachment-preview-area">
+      <view 
+        v-for="(item, index) in formData.attachments" 
+        :key="index" 
+        class="attachment-item"
+      >
+        <image 
+          v-if="isImageFile(item.url)"
+          :src="item.url" 
+          mode="aspectFill"
+          class="attachment-image"
+          @click="handlePreviewImage(item.url, index)"
+        />
+        <view class="attachment-remove" @click="handleRemoveAttachment(index)">
+          <text class="remove-icon">×</text>
+        </view>
+      </view>
+      </view>
+
+  <!-- 富文本编辑器 - 占满整个页面 -->
+      <view 
+      class="editor-container" 
+      :style="{ 
+        paddingBottom: (bottomAreaHeight && bottomAreaHeight > 0) ? (bottomAreaHeight + keyboardHeight) + 'px' : '200rpx'
+      }"
+    >
+      <editor
+        id="editor"
+        class="editor-content"
+        placeholder="记录此刻..."
+        :show-img-size="true"
+        :show-img-toolbar="true"
+        :show-img-resize="true"
+        :auto-focus="true"
+        @ready="handleEditorReady"
+        @input="handleEditorInput"
+        @selectionchange="handleEditorSelectionChange"
+        @statuschange="handleEditorStatusChange"
+      ></editor>
+      <!-- 字符数显示 - 编辑器右下角（随底部区域高度动态上移） -->
+      <view 
+        class="editor-char-count"
+        :style="{ bottom: (bottomAreaHeight && bottomAreaHeight > 0) ? (bottomAreaHeight + keyboardHeight + 16) + 'px' : '216rpx' }"
+      >
+        <text class="char-count-text">{{ contentLength }}/3000</text>
+      </view>
       </view>
     </view>
 
-    <!-- 底部操作栏组件 -->
-    <ActionBar 
-      :is-saving="isSaving"
-      @save="SaveDiary"
-      @cancel="Cancel"
-    />
+    <!-- 底部区域：仅包含工具栏，整体固定在底部，随键盘上移 -->
+  <view class="bottom-area" id="bottom-area" :style="{ bottom: keyboardHeight + 'px', paddingBottom: keyboardHeight > 0 ? '0px' : 'env(safe-area-inset-bottom)' }">
+      <!-- 底部工具栏 -->
+      <view class="bottom-toolbar">
+      <!-- 左侧格式工具 -->
+      <view class="toolbar-left">
+        <view 
+          class="tool-btn" 
+          :class="{ 'tool-btn-active': formatStates.bold }"
+          @click="handleToggleFormat('bold')"
+        >
+          <text class="tool-text" style="font-weight: bold">B</text>
+        </view>
+        <view 
+          class="tool-btn" 
+          :class="{ 'tool-btn-active': formatStates.italic }"
+          @click="handleToggleFormat('italic')"
+        >
+          <text class="tool-text" style="font-style: italic">I</text>
+        </view>
+        <view 
+          class="tool-btn" 
+          :class="{ 'tool-btn-active': formatStates.underline }"
+          @click="handleToggleFormat('underline')"
+        >
+          <text class="tool-text" style="text-decoration: underline">U</text>
+        </view>
+        <view 
+          class="tool-btn" 
+          :class="{ 'tool-btn-active': formatStates.strikethrough }"
+          @click="handleToggleFormat('strikethrough')"
+        >
+          <text class="tool-text" style="text-decoration: line-through">S</text>
+        </view>
+        <view 
+          class="tool-btn" 
+          :class="{ 'tool-btn-active': formatStates.listOrdered }"
+          @click="handleToggleList('ordered')"
+        >
+          <text class="tool-text">1.</text>
+        </view>
+        <view 
+          class="tool-btn" 
+          :class="{ 'tool-btn-active': formatStates.listBullet }"
+          @click="handleToggleList('bullet')"
+        >
+          <text class="tool-text">•</text>
+        </view>
+      </view>
+
+      <!-- 右侧功能按钮 -->
+      <view class="toolbar-right">
+        <!-- 附件 -->
+        <view class="tool-btn" @click="handleAddAttachment">
+          <image src="/static/tabbar/attachment.png" class="tool-icon-img" mode="aspectFit" />
+        </view>
+      </view>
+      </view>
+    </view>
 
     <!-- 日历选择器组件 -->
     <CalendarPicker 
@@ -71,11 +143,6 @@
 </template>
 
 <script>
-import TitleInput from './components/TitleInput.vue'
-import AttachmentManager from './components/AttachmentManager.vue'
-import EditorToolbar from './components/EditorToolbar.vue'
-import EditorArea from './components/EditorArea.vue'
-import ActionBar from './components/ActionBar.vue'
 import CalendarPicker from './components/CalendarPicker.vue'
 
 import { useEditorFormat } from './hooks/useEditorFormat.js'
@@ -86,14 +153,10 @@ import storage from '../../utils/storage.js'
 import { validateEmojiContent, hasEmoji } from '../../utils/emojiUtils.js'
 import api from '../../utils/api.js'
 import { isImageFile, isVideoFile, parseDate, formatDateForBackend } from '../../utils/textUtils.js'
+import { requireLogin } from '../../utils/auth.js'
 
 export default {
   components: {
-    TitleInput,
-    AttachmentManager,
-    EditorToolbar,
-    EditorArea,
-    ActionBar,
     CalendarPicker
   },
   
@@ -189,12 +252,34 @@ export default {
     }
   },
 
+  computed: {
+    // 顶部日期卡片展示数据
+    topDate() {
+      try {
+        const src = (this.currentDiaryInfo && this.currentDiaryInfo.createTime)
+          ? parseDate(this.currentDiaryInfo.createTime)
+          : new Date()
+        const dd = String(src.getDate()).padStart(2, '0')
+        const yyyy = src.getFullYear()
+        const mm = String(src.getMonth() + 1).padStart(2, '0')
+        const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+        const week = weekDays[src.getDay()]
+        return {
+          day: dd,
+          dateLine: `${yyyy}年${mm}月`,
+          timeLine: `${week}`
+        }
+      } catch (e) {
+        return { day: '--', dateLine: '--/-- 周-', timeLine: '--:--' }
+      }
+    }
+  },
+
   data() {
     return {
       diaryId: '',
       categoryId: '',
       formData: {
-        title: '',
         content: '',
         contentHtml: '',
         attachments: [],
@@ -202,14 +287,23 @@ export default {
       },
       contentLength: 0,
       hasEdited: false,
-      showAttachmentBar: false,
-      currentDiaryInfo: null, // 当前日记的完整信息（包含时间等）
-      showCalendar: false, // 是否显示日历选择器
+      currentDiaryInfo: null,
+      showCalendar: false,
+      editorCtx: null,
+      // 动态计算底部区域高度（工具栏 + 保存按钮 + 安全区）
+      bottomAreaHeight: 0,
+      keyboardHeight: 0,
+      topBarHeight: 0,
     }
   },
 
   onLoad(options) {
     console.log('onLoad - 页面加载', options)
+    
+    // 检查登录状态
+    if (!requireLogin()) {
+      return
+    }
     
     // 加载分类数据
     this.loadCategories()
@@ -228,53 +322,230 @@ export default {
     }
   },
   onReady() {
-    // 页面就绪，编辑器会自动初始化
+    // 获取编辑器上下文
+    this.editorCtx = uni.createSelectorQuery().select('#editor').context((res) => {
+      this.editorCtx = res.context
+      console.log('编辑器上下文初始化完成')
+      
+      // 如果是编辑模式且有内容，设置内容
+      if (this.isEditing && this.formData.contentHtml) {
+        this.editorCtx.setContents({
+          html: this.formData.contentHtml
+        })
+      }
+    }).exec()
+
+    // 下一帧测量底部区域高度，确保编辑器底部留白准确
+    this.$nextTick(() => {
+      setTimeout(() => {
+        this.measureBottomArea()
+        this.measureTopBar()
+      }, 50)
+    })
+
+    // 监听键盘高度变化（小程序/App/H5 兼容以平台为准）
+    try {
+      if (uni.onKeyboardHeightChange) {
+        this.__keyboardHandler = (res) => {
+          const h = (res && typeof res.height === 'number') ? res.height : 0
+          this.keyboardHeight = h
+          // 键盘高度变化后，重新测量底部区域高度，确保留白准确
+          this.$nextTick(() => setTimeout(() => this.measureBottomArea(), 50))
+        }
+        uni.onKeyboardHeightChange(this.__keyboardHandler)
+      }
+    } catch (e) {
+      console.warn('注册键盘高度监听失败:', e)
+    }
+  },
+
+  onShow() {
+    // 页面显示时再次测量，避免初始高度为0导致遮挡
+    setTimeout(() => {
+      this.measureBottomArea()
+      this.measureTopBar()
+    }, 50)
+  },
+
+  onResize() {
+    // 屏幕旋转或窗口尺寸变动时重新测量
+    this.measureBottomArea()
+    this.measureTopBar()
+  },
+
+  onHide() {
+    // 页面隐藏时，键盘会收起，延时清理高度
+    setTimeout(() => { this.keyboardHeight = 0 }, 100)
+  },
+
+  onUnload() {
+    // 解绑键盘监听
+    try {
+      if (uni.offKeyboardHeightChange && this.__keyboardHandler) {
+        uni.offKeyboardHeightChange(this.__keyboardHandler)
+      }
+    } catch (e) {}
   },
 
   methods: {
-    // === 组件事件处理方法 ===
+    // === 工具函数 ===
+    isImageFile,
     
-    // 处理标题更新
-    handleTitleUpdate(title) {
-      this.formData.title = title
+    // 测量底部区域高度（工具栏 + 保存按钮 + 安全区），用于为编辑器预留空间
+    measureBottomArea() {
+      try {
+        uni.createSelectorQuery()
+          .select('#bottom-area')
+          .boundingClientRect((rect) => {
+            if (rect && rect.height) {
+              this.bottomAreaHeight = rect.height
+              console.log('measureBottomArea - bottomAreaHeight(px):', this.bottomAreaHeight)
+            }
+          })
+          .exec()
+      } catch (e) {
+        console.warn('measureBottomArea 失败:', e)
+      }
     },
 
+    // 测量顶部状态栏高度
+    measureTopBar() {
+      try {
+        uni.createSelectorQuery()
+          .select('#top-status-bar')
+          .boundingClientRect((rect) => {
+            if (rect && rect.height) {
+              this.topBarHeight = rect.height
+              console.log('measureTopBar - topBarHeight(px):', this.topBarHeight)
+            }
+          })
+          .exec()
+      } catch (e) {
+        console.warn('measureTopBar 失败:', e)
+      }
+    },
+
+    // 顶部状态栏日期展示文案（DD/MM 周二）
+    getTopBarDateText() {
+      try {
+        const dateSrc = (this.currentDiaryInfo && this.currentDiaryInfo.createTime)
+          ? parseDate(this.currentDiaryInfo.createTime)
+          : new Date()
+        const dd = String(dateSrc.getDate()).padStart(2, '0')
+        const mm = String(dateSrc.getMonth() + 1).padStart(2, '0')
+        const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+        const week = weekDays[dateSrc.getDay()]
+        return `${dd}/${mm} ${week}`
+      } catch (e) {
+        return '--/-- 周--'
+      }
+    },
+    
+    // === 编辑器事件处理 ===
+    
+    // 处理编辑器就绪
+    handleEditorReady(e) {
+      console.log('编辑器就绪')
+      uni.createSelectorQuery()
+        .select('#editor')
+        .context((res) => {
+          this.editorCtx = res.context
+          console.log('编辑器上下文获取成功')
+          
+          // 如果是编辑模式且有内容，设置内容
+          if (this.isEditing && this.formData.contentHtml) {
+            setTimeout(() => {
+              this.editorCtx.setContents({
+                html: this.formData.contentHtml
+              })
+            }, 100)
+          }
+        })
+        .exec()
+    },
+    
+    // 处理编辑器输入
+    handleEditorInput(e) {
+      this.hasEdited = true
+      if (e.detail && e.detail.text) {
+        this.contentLength = e.detail.text.length
+        this.formData.content = e.detail.text
+        
+        // 限制字符数
+        if (this.contentLength > 3000) {
+          uni.showToast({
+            title: '已达到字符数上限',
+            icon: 'none'
+          })
+        }
+      }
+    },
+    
+    // 处理编辑器选择变化
+    handleEditorSelectionChange(e) {
+      console.log('选择变化:', e.detail)
+    },
+    
+    // 处理编辑器状态变化
+    handleEditorStatusChange(e) {
+      const formats = e.detail
+      if (formats) {
+        this.formatStates.bold = !!formats.bold
+        this.formatStates.italic = !!formats.italic
+        this.formatStates.underline = !!formats.underline
+        this.formatStates.strikethrough = !!(formats.strike || formats.strikeThrough)
+        this.formatStates.listOrdered = formats.list === 'ordered'
+        this.formatStates.listBullet = formats.list === 'bullet'
+      }
+    },
+    
+    // === 格式工具栏操作 ===
+    
     // 处理格式切换
     handleToggleFormat(format) {
       if (!this.editorCtx) return
       
-      console.log('handleToggleFormat - 切换格式:', format)
-      
-      // 格式映射：将我们的格式名映射到编辑器的格式名
       const formatMap = {
         bold: 'bold',
         italic: 'italic',
         underline: 'underline',
-        strikethrough: 'strike'  // 注意：编辑器使用 'strike'
+        strikethrough: 'strike'
       }
       
       const editorFormatName = formatMap[format]
-      if (editorFormatName) {
-        // 直接使用编辑器的 format 方法，这会触发 statuschange 事件
-        if (this.editorCtx.format && typeof this.editorCtx.format === 'function') {
-          this.editorCtx.format(editorFormatName)
-          console.log('handleToggleFormat - 已调用编辑器格式方法:', editorFormatName)
-        } else {
-          console.warn('handleToggleFormat - format 方法不可用')
-        }
+      if (editorFormatName && this.editorCtx.format) {
+        this.editorCtx.format(editorFormatName)
       }
     },
 
-    // 处理列表切换
+        // 处理列表切换
     handleToggleList(listType) {
-      this.toggleList(this.editorCtx, listType)
+      if (!this.editorCtx || !this.editorCtx.format) return
+      this.editorCtx.format('list', listType)
     },
 
-
-
-    // 处理切换附件栏
-    handleToggleAttachmentBar() {
-      this.showAttachmentBar = !this.showAttachmentBar
+    // === 附件管理 ===
+    
+    // 获取编辑器内容（Promise 封装）
+    getEditorContent() {
+      return new Promise((resolve) => {
+        if (!this.editorCtx || !this.editorCtx.getContents) {
+          resolve({ text: this.formData.content, html: this.formData.contentHtml })
+          return
+        }
+        
+        this.editorCtx.getContents({
+          success: (res) => {
+            resolve({
+              text: res.text || '',
+              html: res.html || ''
+            })
+          },
+          fail: () => {
+            resolve({ text: this.formData.content, html: this.formData.contentHtml })
+          }
+        })
+      })
     },
 
     // 处理添加附件
@@ -456,74 +727,6 @@ export default {
       })
     },
 
-    // 处理编辑器就绪
-    handleEditorReady(e) {
-      console.log('handleEditorReady - 编辑器就绪事件:', e)
-      this.onEditorReady(e)
-    },
-
-    // 处理编辑器上下文就绪
-    handleEditorContextReady(context) {
-      console.log('handleEditorContextReady - 编辑器上下文就绪:', !!context)
-      this.setEditorContext(context)
-      
-      // 如果是编辑模式且有内容HTML，设置编辑器内容
-      if (this.isEditing && this.formData.contentHtml) {
-        console.log('handleEditorContextReady - 编辑模式，设置内容:', this.formData.contentHtml.substring(0, 100))
-        this.setEditorContent(this.formData.contentHtml)
-      } else if (this.isEditing && !this.formData.contentHtml && this.formData.content) {
-        // 如果没有HTML内容但有纯文本内容，设置纯文本
-        console.log('handleEditorContextReady - 编辑模式，设置纯文本内容')
-        this.setEditorContent(this.formData.content)
-      }
-    },
-
-    // 处理编辑器输入
-    handleEditorInput(e) {
-      console.log('handleEditorInput - 编辑器输入事件:', {
-        hasDetail: !!e.detail,
-        hasText: !!(e.detail && e.detail.text),
-        textLength: e.detail && e.detail.text ? e.detail.text.length : 0
-      })
-      this.onEditorInput(e)
-      this.hasEdited = true
-      this.contentLength = e.detail.text ? e.detail.text.length : 0
-      
-      // 同步更新 formData 的纯文本内容（用于备份）
-      if (e.detail && e.detail.text) {
-        this.formData.content = e.detail.text
-      }
-    },
-
-    // 处理编辑器选择变化
-    handleEditorSelectionChange(e) {
-      console.log("handleEditorSelectionChange：选择发生变化");
-      this.onEditorSelectionChange(e, {
-        updateToolbarFromSelection: this.updateToolbarFromSelection,
-        syncGlobalFormatsWithCursor: this.syncGlobalFormatsWithCursor,
-        hasActiveGlobalFormats: this.hasActiveGlobalFormats
-      })
-    },
-
-    // 处理编辑器状态变化
-    handleEditorStatusChange(e) {
-      console.log('handleEditorStatusChange - 编辑器状态变化:', e.detail)
-      // 直接从编辑器的状态事件中获取格式状态
-      const formats = e.detail
-      
-      // 更新格式状态，这里使用编辑器原生的状态
-      if (formats) {
-        this.formatStates.bold = !!formats.bold
-        this.formatStates.italic = !!formats.italic
-        this.formatStates.underline = !!formats.underline
-        this.formatStates.strikethrough = !!(formats.strike || formats.strikeThrough)
-        this.formatStates.listOrdered = formats.list === 'ordered'
-        this.formatStates.listBullet = formats.list === 'bullet'
-        
-        console.log('handleEditorStatusChange - 格式状态已更新:', this.formatStates)
-      }
-    },
-
     // 加载日记数据（编辑模式）
     async LoadDiary() {
       if (!this.diaryId) {
@@ -571,7 +774,6 @@ export default {
 
         // 设置表单数据
         this.formData = {
-          title: diary.title || '',
           content: diary.content || '',
           contentHtml: diary.contentHtml || '',
           attachments: attachments || [],
@@ -587,7 +789,6 @@ export default {
         this.contentLength = diary.content ? diary.content.length : 0
         
         console.log('LoadDiary - 表单数据设置完成:', {
-          title: this.formData.title,
           contentLength: this.contentLength,
           hasContentHtml: !!this.formData.contentHtml,
           attachmentsCount: this.formData.attachments.length,
@@ -614,11 +815,6 @@ export default {
 
     // 使用后端API的保存方法 
     async SaveDiary() {
-      if (!this.formData.title.trim()) {
-        uni.showToast({ title: '请输入标题', icon: 'none' })
-        return
-      }
-      
       if (this.contentLength === 0 && !this.formData.content) {
         uni.showToast({ title: '请输入内容', icon: 'none' })
         return
@@ -662,7 +858,6 @@ export default {
         
         console.log('SaveDiary - 准备保存的数据:', {
           isEditing: this.isEditing,
-          title: this.formData.title,
           contentLength: this.formData.content.length,
           hasHtml: !!this.formData.contentHtml,
           attachmentsCount: this.formData.attachments.length,
@@ -755,16 +950,17 @@ export default {
     },
 
     Cancel() {
-      if (this.formData.title || this.contentLength > 0 || this.formData.attachments.length > 0) {
+      // 如果有未保存的内容，提示用户
+      if (this.hasEdited && this.contentLength > 0) {
         uni.showModal({
           title: '提示',
-          content: '确定要放弃编辑吗？',
+          content: '有未保存的内容，确定要离开吗？',
           confirmColor: '#FF9A76',
           success: (res) => {
             if (res.confirm) {
               uni.navigateBack()
             }
-          },
+          }
         })
       } else {
         uni.navigateBack()
@@ -874,143 +1070,249 @@ export default {
 
 <style scoped>
 .edit-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #FFF5F0 0%, #FFE5D8 100%);
-  padding: 24rpx;
-  padding-bottom: 200rpx;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  background: #FFFFFF;
 }
 
-/* 时间信息模块样式 */
-.time-info-section {
-  margin: 32rpx 0 24rpx 0;
-  padding: 0 8rpx;
-}
-
-.time-info-container {
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 20rpx;
-  padding: 24rpx 32rpx;
-  box-shadow: 0 8rpx 24rpx rgba(255, 154, 118, 0.08);
-  border: 1px solid rgba(255, 154, 118, 0.1);
-  backdrop-filter: blur(10rpx);
+/* 为顶部状态栏预留空间的内容包裹容器 */
+.content-wrapper {
   position: relative;
-  overflow: hidden;
 }
 
-.time-info-container::before {
-  content: '';
-  position: absolute;
+/* 顶部状态栏 */
+.top-status-bar {
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 3rpx;
-  background: linear-gradient(90deg, #FF9A76 0%, #FFC5A6 50%, #FF9A76 100%);
-  border-radius: 20rpx 20rpx 0 0;
-}
-
-.time-main-area {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
+  padding: 12rpx 20rpx; 
+  padding-top: calc(12rpx + env(safe-area-inset-top));
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #F0F0F0;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.04);
+  z-index: 1000;
 }
 
-.time-content {
-  flex: 1;
+.top-bar-left, .top-bar-right { display: flex; align-items: center; }
+
+.top-date-card {
   display: flex;
-  flex-direction: column;
-  gap: 8rpx;
+  align-items: center;
+  gap: 16rpx;
+  padding: 10rpx 16rpx;
+  background: #F5F6F7;
+  border-radius: 14rpx;
+  border: 1rpx solid #ECECEC;
 }
 
-.time-label {
-  font-size: 24rpx;
-  color: #999;
-  font-weight: 500;
-  letter-spacing: 0.5rpx;
+.date-day {
+  font-size: 56rpx;
+  line-height: 1;
+  font-weight: 700;
+  color: #333333;
 }
 
-.time-value {
-  font-size: 32rpx;
-  color: #333;
-  font-weight: 600;
-  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-}
+.date-right { display: flex; flex-direction: column; justify-content: center; }
+.date-line1 { font-size: 30rpx; color: #333; font-weight: 600; }
+.date-line2 { font-size: 26rpx; color: #666; margin-top: 6rpx; }
 
-.time-edit-btn {
-  padding: 16rpx 20rpx;
+.top-save-btn {
+  padding: 10rpx 24rpx;
   background: linear-gradient(135deg, #FF9A76 0%, #FFC5A6 100%);
   border-radius: 16rpx;
-  box-shadow: 0 4rpx 12rpx rgba(255, 154, 118, 0.3);
-  transition: all 0.3s ease;
+  box-shadow: 0 6rpx 16rpx rgba(255, 154, 118, 0.3);
 }
 
-.time-edit-btn:active {
-  transform: scale(0.95);
-  box-shadow: 0 2rpx 8rpx rgba(255, 154, 118, 0.4);
+.top-save-btn.saving { opacity: 0.7; }
+.top-save-text { font-size: 28rpx; color: #fff; font-weight: 600; }
+
+/* 附件预览区域 */
+.attachment-preview-area {
+  padding: 16rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  background: #FFF5F0;
+  border-bottom: 1rpx solid #FFE5D8;
 }
 
-.edit-icon {
-  font-size: 28rpx;
+.attachment-item {
+  position: relative;
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.attachment-image {
+  width: 100%;
+  height: 100%;
+}
+
+.attachment-remove {
+  position: absolute;
+  top: 4rpx;
+  right: 4rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-icon {
+  color: #FFFFFF;
+  font-size: 36rpx;
   line-height: 1;
 }
 
-.time-info-footer {
-  margin-top: 16rpx;
-  text-align: center;
+/* 编辑器容器 */
+.editor-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
 }
 
-.time-footer-text {
-  font-size: 22rpx;
-  color: #666;
-  opacity: 0.8;
-  font-style: italic;
-  letter-spacing: 0.3rpx;
+.editor-content {
+  width: 100%;
+  height: 100%;
+  padding: 20rpx 24rpx;
+  padding-bottom: 60rpx; /* 为字符数留出空间 */
+  box-sizing: border-box;
+  font-size: 32rpx;
+  line-height: 1.6;
 }
 
-/* 时间信息模块响应式适配 */
-@media screen and (max-width: 750px) {
-  .time-info-container {
-    padding: 20rpx 24rpx;
-  }
-  
-  .time-label {
-    font-size: 22rpx;
-  }
-  
-  .time-value {
-    font-size: 26rpx;
-  }
-  
-  .time-footer-text {
-    font-size: 20rpx;
-  }
-  
-  .time-divider {
-    height: 50rpx;
-    margin: 0 16rpx;
-  }
+/* 编辑器内字符数显示 - 右下角 */
+.editor-char-count {
+  position: absolute;
+  right: 24rpx;
+  bottom: 16rpx;
+  padding: 8rpx 16rpx;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 20rpx;
+  backdrop-filter: blur(10rpx);
+  z-index: 2; /* 确保在编辑器内容之上 */
 }
 
-/* 深色模式适配（如果需要的话） */
-@media (prefers-color-scheme: dark) {
-  .time-info-container {
-    background: rgba(40, 40, 40, 0.95);
-    border: 1px solid rgba(255, 154, 118, 0.2);
-  }
-  
-  .time-label {
-    color: #aaa;
-  }
-  
-  .time-value {
-    color: #fff;
-  }
-  
-  .time-footer-text {
-    color: #999;
-  }
+.editor-char-count .char-count-text {
+  font-size: 24rpx;
+  color: #999999;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* 底部整体区域（固定） */
+.bottom-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border-top: 1rpx solid #F0F0F0;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.04);
+  z-index: 999;
+  transition: bottom 0.2s ease;
+}
+
+/* 底部工具栏（不再固定，由父容器定位） */
+.bottom-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6rpx 12rpx; /* 更紧凑的一行高度 */
+  background: #FFFFFF;
+}
+
+/* 工具栏左侧 - 格式按钮 */
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 6rpx; /* 减小按钮间距 */
+  flex: 1;
+}
+
+/* 工具栏右侧 - 功能按钮 */
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+/* 工具按钮 */
+.tool-btn {
+  width: 48rpx; /* 缩小按钮尺寸以保证单行高度 */
+  height: 48rpx;
+  border-radius: 8rpx;
+  background: #F8F8F8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.tool-btn:active {
+  transform: scale(0.95);
+  background: #E8E8E8;
+}
+
+.tool-btn-active {
+  background: #FF9A76 !important;
+}
+
+.tool-btn-active .tool-text {
+  color: #FFFFFF !important;
+}
+
+.tool-text {
+  font-size: 28rpx;
+  color: #333333;
+}
+
+.tool-icon-img {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+/* 删除底部保存按钮样式（已移至顶部状态栏） */
+
+.save-button {
+  width: 100%;
+  height: 88rpx;
+  background: linear-gradient(135deg, #FF9A76 0%, #FFC5A6 100%);
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(255, 154, 118, 0.3);
+  transition: all 0.3s ease;
+}
+
+.save-button:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 16rpx rgba(255, 154, 118, 0.4);
+}
+
+.save-button.saving {
+  opacity: 0.7;
+  background: linear-gradient(135deg, #CCCCCC 0%, #E0E0E0 100%);
+}
+
+.save-button-text {
+  font-size: 32rpx;
+  color: #FFFFFF;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+}
+
+/* 适配输入法弹起 */
+.edit-page {
+  padding-bottom: env(safe-area-inset-bottom);
+}
 </style>

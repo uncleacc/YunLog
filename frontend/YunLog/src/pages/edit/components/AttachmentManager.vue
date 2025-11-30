@@ -1,43 +1,45 @@
 <template>
   <view class="attachments-card" v-if="attachments.length > 0 || showAttachmentBar">
     <view class="attachments-label">附件</view>
-    <view class="attachments-grid">
-      <!-- 已上传的附件 -->
-      <view
-        class="attachment-item"
-        v-for="(item, index) in attachments"
-        :key="index"
-        @longpress="onShowAttachmentMenu(index)"
-      >
-        <template v-if="item && item.url">
-          <image
-            v-if="isImageFile(item.url)"
-            class="attachment-preview"
-            :src="item.url"
-            mode="aspectFill"
-            @click.stop="onPreviewImage(item.url, index)"
-          />
-          <view v-else class="attachment-video">
-            <text class="video-icon">🎬</text>
-            <text class="video-text">视频</text>
+    <scroll-view class="attachments-scroll" scroll-x="true" show-scrollbar="false">
+      <view class="attachments-list">
+        <!-- 已上传的附件 -->
+        <view
+          class="attachment-item"
+          v-for="(item, index) in attachments"
+          :key="index"
+          @longpress="onShowAttachmentMenu(index)"
+        >
+          <template v-if="item && item.url">
+            <image
+              v-if="isImageFile(item.url)"
+              class="attachment-preview"
+              :src="item.url"
+              mode="aspectFill"
+              @click.stop="onPreviewImage(item.url, index)"
+            />
+            <view v-else class="attachment-video">
+              <text class="video-icon">🎬</text>
+              <text class="video-text">视频</text>
+            </view>
+            
+            <!-- 上传状态遮罩 -->
+            <view v-if="item.uploading" class="attachment-uploading">
+              <view class="uploading-spinner"></view>
+              <text class="uploading-text">上传中</text>
+            </view>
+          </template>
+          <view class="attachment-delete" @click.stop="onRemoveAttachment(index)" v-if="!item.uploading">
+            <text class="delete-icon">×</text>
           </view>
-          
-          <!-- 上传状态遮罩 -->
-          <view v-if="item.uploading" class="attachment-uploading">
-            <view class="uploading-spinner"></view>
-            <text class="uploading-text">上传中</text>
-          </view>
-        </template>
-        <view class="attachment-delete" @click.stop="onRemoveAttachment(index)" v-if="!item.uploading">
-          <text class="delete-icon">×</text>
+        </view>
+        <!-- 添加附件按钮 -->
+        <view class="attachment-add" @click="onAddAttachment">
+          <text class="add-icon">+</text>
+          <text class="add-text">添加</text>
         </view>
       </view>
-      <!-- 添加附件按钮 -->
-      <view class="attachment-add" @click="onAddAttachment">
-        <text class="add-icon">+</text>
-        <text class="add-text">添加</text>
-      </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -93,19 +95,27 @@ export default {
   font-weight: 500;
 }
 
-.attachments-grid {
-  display: flex;
-  flex-wrap: wrap;
+/* 横向滚动容器 */
+.attachments-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.attachments-list {
+  display: inline-flex;
   gap: 16rpx;
+  padding: 4rpx 0; /* 添加上下内边距，防止阴影被裁切 */
 }
 
 .attachment-item {
+  display: inline-block;
   width: 200rpx;
   height: 200rpx;
   border-radius: 16rpx;
   overflow: hidden;
   position: relative;
   background: #f5f5f5;
+  flex-shrink: 0; /* 防止缩小 */
 }
 
 .attachment-preview {
@@ -153,15 +163,16 @@ export default {
 }
 
 .attachment-add {
+  display: inline-flex;
   width: 200rpx;
   height: 200rpx;
   border-radius: 16rpx;
   border: 2rpx dashed #ff9a76;
-  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   background: #fff5f0;
+  flex-shrink: 0; /* 防止缩小 */
 }
 
 .add-icon {

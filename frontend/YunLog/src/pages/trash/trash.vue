@@ -77,7 +77,8 @@
 <script>
 import api from '@/utils/api.js'
 import { parseDate } from '@/utils/textUtils.js'
-import { getPlainTextPreview, isImageFile } from '@/utils/textUtils.js'
+import { getPlainTextPreview } from '@/utils/textUtils.js'
+import { requireLogin } from '@/utils/auth.js'
 
 export default {
   data() {

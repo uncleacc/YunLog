@@ -1,6 +1,8 @@
 package io.github.uncleacc.yunlog.service;
 
+import io.github.uncleacc.yunlog.context.UserContext;
 import io.github.uncleacc.yunlog.dto.request.CreateCategoryRequest;
+import io.github.uncleacc.yunlog.dto.request.UpdateCategorySortRequest;
 import io.github.uncleacc.yunlog.entity.Category;
 import io.github.uncleacc.yunlog.entity.Diary;
 import io.github.uncleacc.yunlog.exception.BusinessException;
@@ -15,7 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 分类服务 - 无用户认证版本
+ * 分类服务
  */
 @Slf4j
 @Service
@@ -26,17 +28,20 @@ public class CategoryService {
     private final DiaryRepository diaryRepository;
     
     /**
-     * 获取分类列表
+     * 获取分类列表（按排序）
      */
     public List<Category> getCategoryList() {
-        return categoryRepository.findAllByOrderByCreateTimeAsc();
+        Long userId = UserContext.getUserId();
+        return categoryRepository.findByUserIdOrderBySortOrderAscCreateTimeAsc(userId);
     }
     
     /**
      * 根据ID获取分类详情
      */
     public Category getCategoryById(Long id) {
+        Long userId = UserContext.getUserId();
         return categoryRepository.findById(id)
+            .filter(category -> category.getUserId().equals(userId))
             .orElseThrow(() -> new BusinessException(404, "分类不存在"));
     }
     
@@ -45,8 +50,10 @@ public class CategoryService {
      */
     @Transactional
     public Category createCategory(CreateCategoryRequest request) {
-        // 检查分类名称是否已存在
-        if (categoryRepository.existsByName(request.getName())) {
+        Long userId = UserContext.getUserId();
+        
+        // 检查分类名称是否已存在（同一用户下）
+        if (categoryRepository.existsByUserIdAndName(userId, request.getName())) {
             throw new BusinessException(400, "分类名称已存在");
         }
         
@@ -54,7 +61,12 @@ public class CategoryService {
         category.setName(request.getName());
         category.setIcon(request.getIcon());
         category.setColor(request.getColor());
+        category.setUserId(userId);
         category.setIsDefault(false);
+        
+        // 设置排序值为当前最大值+1
+        long maxSortOrder = categoryRepository.countByUserId(userId);
+        category.setSortOrder((int) maxSortOrder);
         
         return categoryRepository.save(category);
     }
@@ -64,6 +76,7 @@ public class CategoryService {
      */
     @Transactional
     public Category updateCategory(Long id, CreateCategoryRequest request) {
+        Long userId = UserContext.getUserId();
         Category category = getCategoryById(id);
         
         // 如果是默认分类，不允许修改名称
@@ -73,7 +86,7 @@ public class CategoryService {
         
         // 如果修改名称且不是默认分类，检查是否重名
         if (!category.getName().equals(request.getName())) {
-            if (categoryRepository.existsByName(request.getName())) {
+            if (categoryRepository.existsByUserIdAndName(userId, request.getName())) {
                 throw new BusinessException(400, "分类名称已存在");
             }
             // 只有非默认分类才允许修改名称
@@ -92,6 +105,7 @@ public class CategoryService {
      */
     @Transactional
     public void deleteCategory(Long id) {
+        Long userId = UserContext.getUserId();
         Category category = getCategoryById(id);
         
         // 不能删除默认分类
@@ -99,8 +113,8 @@ public class CategoryService {
             throw new BusinessException(400, "默认分类不能删除");
         }
         
-        // 获取默认分类
-        Category defaultCategory = categoryRepository.findByIsDefaultTrue()
+        // 获取默认分类（当前用户的）
+        Category defaultCategory = categoryRepository.findByUserIdAndIsDefaultTrue(userId)
             .orElseThrow(() -> new BusinessException(500, "默认分类不存在"));
         
         // 查找该分类下的所有日记（包括已删除和未删除）
@@ -130,15 +144,30 @@ public class CategoryService {
     }
     
     /**
+     * 批量更新分类排序
+     */
+    @Transactional
+    public void updateCategorySort(List<UpdateCategorySortRequest.CategorySortItem> sortList) {
+        for (UpdateCategorySortRequest.CategorySortItem item : sortList) {
+            Category category = getCategoryById(item.getId());
+            category.setSortOrder(item.getSortOrder());
+            categoryRepository.save(category);
+        }
+        log.info("批量更新分类排序成功，共更新 {} 个分类", sortList.size());
+    }
+    
+    /**
      * 创建默认分类
      */
     @Transactional
-    public void createDefaultCategory() {
+    public void createDefaultCategory(Long userId) {
         Category defaultCategory = new Category();
         defaultCategory.setName("默认分类");
         defaultCategory.setIcon("📝");
         defaultCategory.setColor("#FF9A76");
+        defaultCategory.setUserId(userId);
         defaultCategory.setIsDefault(true);
+        defaultCategory.setSortOrder(0);
         
         categoryRepository.save(defaultCategory);
     }
@@ -147,10 +176,11 @@ public class CategoryService {
      * 获取分类统计信息
      */
     public CategoryStatsResponse getCategoryStats(Long id) {
-        // 验证分类是否存在
+        Long userId = UserContext.getUserId();
+        // 验证分类是否存在并属于当前用户
         getCategoryById(id);
         
-        long totalCount = diaryRepository.countByCategoryIdAndIsDeletedFalse(id);
+        long totalCount = diaryRepository.countByUserIdAndCategoryIdAndIsDeletedFalse(userId, id);
         
         CategoryStatsResponse stats = new CategoryStatsResponse();
         stats.setTotalCount(totalCount);
@@ -159,10 +189,10 @@ public class CategoryService {
         
         // 获取最近的日记
         diaryRepository.findFirstByCategoryIdAndIsDeletedFalseOrderByCreateTimeDesc(id)
+            .filter(diary -> diary.getUserId().equals(userId))
             .ifPresent(diary -> {
                 CategoryStatsResponse.RecentDiary recentDiary = new CategoryStatsResponse.RecentDiary();
                 recentDiary.setId(diary.getId());
-                recentDiary.setTitle(diary.getTitle());
                 recentDiary.setCreateTime(diary.getCreateTime());
                 stats.setRecentDiary(recentDiary);
             });
@@ -194,15 +224,11 @@ public class CategoryService {
         
         public static class RecentDiary {
             private Long id;
-            private String title;
             private java.time.LocalDateTime createTime;
             
             // getters and setters
             public Long getId() { return id; }
             public void setId(Long id) { this.id = id; }
-            
-            public String getTitle() { return title; }
-            public void setTitle(String title) { this.title = title; }
             
             public java.time.LocalDateTime getCreateTime() { return createTime; }
             public void setCreateTime(java.time.LocalDateTime createTime) { this.createTime = createTime; }

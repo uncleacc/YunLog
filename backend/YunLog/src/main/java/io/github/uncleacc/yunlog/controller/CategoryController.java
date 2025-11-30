@@ -2,6 +2,7 @@ package io.github.uncleacc.yunlog.controller;
 
 import io.github.uncleacc.yunlog.common.ApiResponse;
 import io.github.uncleacc.yunlog.dto.request.CreateCategoryRequest;
+import io.github.uncleacc.yunlog.dto.request.UpdateCategorySortRequest;
 import io.github.uncleacc.yunlog.entity.Category;
 import io.github.uncleacc.yunlog.service.CategoryService;
 import lombok.RequiredArgsConstructor;
@@ -75,5 +76,14 @@ public class CategoryController {
     public ApiResponse<CategoryService.CategoryStatsResponse> getCategoryStats(@PathVariable Long id) {
         CategoryService.CategoryStatsResponse stats = categoryService.getCategoryStats(id);
         return ApiResponse.success(stats);
+    }
+    
+    /**
+     * 批量更新分类排序
+     */
+    @PutMapping("/sort")
+    public ApiResponse<Void> updateCategorySort(@Valid @RequestBody UpdateCategorySortRequest request) {
+        categoryService.updateCategorySort(request.getCategorySortList());
+        return ApiResponse.success();
     }
 }

@@ -3,8 +3,15 @@
  * 统一处理请求和响应
  */
 
-// 后端 API 基础地址
-const BASE_URL = 'http://localhost:8080/api/v1'
+import { getToken, navigateToLogin } from './auth.js'
+
+// 后端 API 基础地址配置
+// 生产环境：使用云服务器地址
+const getBaseURL = () => {
+  return 'http://101.200.84.91:8080'
+}
+
+const BASE_URL = getBaseURL()
 
 /**
  * 发送 HTTP 请求
@@ -21,15 +28,24 @@ function request(options) {
       })
     }
 
+    // 构建请求头
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.header
+    }
+    
+    // 自动携带token
+    const token = getToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
     // 发起请求
     uni.request({
       url: BASE_URL + options.url,
       method: options.method || 'GET',
       data: options.data || {},
-      header: {
-        'Content-Type': 'application/json',
-        ...options.header
-      },
+      header: headers,
       timeout: options.timeout || 60000,
       success: (res) => {
         // 隐藏加载提示
@@ -57,6 +73,24 @@ function request(options) {
             }
             reject(new Error(errorMsg))
           }
+        } else if (res.statusCode === 401) {
+          // 未授权，跳转到登录页
+          if (options.loading !== false) {
+            uni.hideLoading()
+          }
+          
+          uni.showToast({
+            title: '请先登录',
+            icon: 'none',
+            duration: 1500
+          })
+          
+          // 延迟跳转，让用户看到提示
+          setTimeout(() => {
+            navigateToLogin()
+          }, 1500)
+          
+          reject(new Error('未授权'))
         } else {
           // HTTP 错误
           // 尝试从响应体中获取错误消息
@@ -153,6 +187,13 @@ export function upload(url, filePath, formData = {}, options = {}) {
   return new Promise((resolve, reject) => {
     const fullUrl = BASE_URL + url
     
+    // 构建请求头
+    const headers = {}
+    const token = getToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
     // 显示上传进度
     if (options.loading !== false) {
       uni.showLoading({
@@ -166,6 +207,7 @@ export function upload(url, filePath, formData = {}, options = {}) {
       filePath,
       name: options.name || 'file',
       formData,
+      header: headers,
       success: (res) => {
         if (options.loading !== false) {
           uni.hideLoading()

@@ -35,11 +35,6 @@
         </scroll-view>
       </view>
 
-      <!-- 标题 -->
-      <view class="title-section">
-        <text class="title">{{ diary.title }}</text>
-      </view>
-
       <!-- 内容 -->
       <view class="content-section">
         <rich-text 
@@ -307,26 +302,6 @@ export default {
 }
 
 /* 标题区域 */
-.title-section {
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(255, 154, 118, 0.1);
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.title {
-  font-size: 40rpx;
-  font-weight: bold;
-  color: #333333;
-  line-height: 1.4;
-  word-break: break-all;
-  word-wrap: break-word;
-  width: 100%;
-}
-
 /* 内容区域 */
 .content-section {
   background: #ffffff;

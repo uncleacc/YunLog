@@ -14,38 +14,52 @@
     <!-- 日记列表 -->
     <view class="diary-list" v-if="diaryList.length > 0">
       <view
-        class="diary-item"
-        v-for="item in diaryList"
+        class="swipe-wrapper"
+        v-for="(item, index) in diaryList"
         :key="item.id"
-        @click="ViewDiary(item.id)"
       >
-        <!-- 附件缩略图 -->
-        <view class="diary-attachments" v-if="item.attachments && item.attachments.length > 0">
-          <template v-for="(att, index) in item.attachments.slice(0, 3)" :key="index">
-            <image
-              v-if="att && att.url"
-              class="attachment-thumb"
-              :src="att.url"
-              mode="aspectFill"
-            />
-          </template>
-          <view class="attachment-more" v-if="item.attachments.length > 3">
-            <text class="more-text">+{{ item.attachments.length - 3 }}</text>
+        <view 
+          class="swipe-item"
+          @touchstart="handleTouchStart($event, item)"
+          @touchmove="handleTouchMove($event, item)"
+          @touchend="handleTouchEnd($event, item)"
+          :style="{ transform: `translateX(${item._translateX || 0}px)`, transition: item._transition ? 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none' }"
+        >
+          <view class="diary-item" @click="ViewDiary(item)" :class="getDiaryItemClass(index)">
+            <!-- 封面图片（根据对齐方式设置位置） -->
+            <view class="diary-cover" v-if="item.attachments && item.attachments.length > 0 && item.attachments[0].url">
+              <image
+                class="cover-image"
+                :src="item.attachments[0].url"
+                mode="aspectFill"
+              />
+            </view>
+            
+            <!-- 内容区域 -->
+            <view class="diary-content" :class="getDiaryContentClass(index)">
+              <view class="diary-content-preview">{{ getPlainTextPreview(item) }}</view>
+              <view class="diary-footer">
+                <view class="diary-datetime">
+                  <text class="diary-date">{{ FormatDate(item.createTime) }}</text>
+                </view>
+              </view>
+            </view>
           </view>
         </view>
-        <view class="diary-title">{{ item.title }}</view>
-        <view class="diary-content-preview">{{ getPlainTextPreview(item) }}</view>
-        <view class="diary-footer">
-          <view class="diary-datetime">
-            <text class="diary-date">{{ FormatDate(item.createTime) }}</text>
+        
+        <!-- 左滑显示的按钮 -->
+        <view 
+          class="swipe-actions"
+          :style="{ 
+            width: `${Math.abs(item._translateX || 0)}px`,
+            transition: item._transition ? 'width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none'
+          }"
+        >
+          <view class="swipe-btn swipe-btn-move" @click.stop="ShowMoveDialog(item)">
+            <text class="swipe-btn-text">移动</text>
           </view>
-          <view class="diary-actions">
-            <view class="action-btn" @click.stop="EditDiary(item.id)">
-              <text class="action-icon">✏️</text>
-            </view>
-            <view class="action-btn" @click.stop="ConfirmDelete(item.id)">
-              <text class="action-icon">🗑️</text>
-            </view>
+          <view class="swipe-btn swipe-btn-delete" @click.stop="ConfirmDelete(item.id)">
+            <text class="swipe-btn-text">删除</text>
           </view>
         </view>
       </view>
@@ -69,6 +83,7 @@
 import api from '@/utils/api.js'
 import { parseDate } from '@/utils/textUtils.js'
 import { getPlainTextPreview } from '@/utils/textUtils.js'
+import { requireLogin } from '@/utils/auth.js'
 
 export default {
   data() {
@@ -80,20 +95,97 @@ export default {
       limit: 20,
       total: 0,
       loading: false,
+      allCategories: [], // 所有分类列表（用于移动操作）
+      // 触摸相关状态
+      touchStartX: 0,
+      touchStartY: 0,
+      currentTranslateX: 0,
+      currentSwipeItem: null,
+      swipeThreshold: 30, // 滑动触发阈值（px）
+      actionWidth: 0, // 按钮总宽度（px），会在 mounted 时计算
+      // 对齐方式设置
+      cardAlignment: 'alternate', // 默认奇偶交替
     }
   },
   onLoad(options) {
+    // 检查登录状态
+    if (!requireLogin()) {
+      return
+    }
+    
     if (options.id) {
       this.categoryId = options.id
+      this.LoadAlignment()
       this.LoadData()
     }
   },
   onShow() {
     if (this.categoryId) {
+      this.LoadAlignment()
       this.LoadData()
     }
+    
+    // 监听对齐方式变化
+    uni.$on('alignmentChanged', this.OnAlignmentChanged)
+  },
+  onHide() {
+    // 移除监听
+    uni.$off('alignmentChanged', this.OnAlignmentChanged)
+  },
+  mounted() {
+    // 计算按钮实际宽度（320rpx 转换为 px）
+    // uni-app 中 750rpx = 屏幕宽度
+    const systemInfo = uni.getSystemInfoSync()
+    const screenWidth = systemInfo.screenWidth
+    this.actionWidth = (320 / 750) * screenWidth
   },
   methods: {
+    /**
+     * 加载对齐方式设置
+     */
+    LoadAlignment() {
+      try {
+        const alignment = uni.getStorageSync('diary_card_alignment')
+        this.cardAlignment = alignment || 'alternate'
+      } catch (e) {
+        console.error('加载对齐设置失败:', e)
+        this.cardAlignment = 'alternate'
+      }
+    },
+    
+    /**
+     * 监听对齐方式变化
+     */
+    OnAlignmentChanged(alignment) {
+      this.cardAlignment = alignment
+    },
+    
+    /**
+     * 获取日记卡片的样式类
+     */
+    getDiaryItemClass(index) {
+      if (this.cardAlignment === 'default') {
+        // 默认模式：所有封面都在右侧
+        return 'cover-right'
+      } else {
+        // 奇偶交替模式：奇数在右，偶数在左
+        return (index + 1) % 2 === 1 ? 'cover-right' : ''
+      }
+    },
+    
+    /**
+     * 获取内容区域的样式类
+     */
+    getDiaryContentClass(index) {
+      if (this.cardAlignment === 'default') {
+        // 默认模式：所有文字都左对齐
+        return ''
+      } else {
+        // 奇偶交替模式：偶数右对齐
+        return (index + 1) % 2 === 0 ? 'align-right' : ''
+      }
+    },
+    
     async LoadData() {
       if (this.loading) return
       this.loading = true
@@ -109,12 +201,21 @@ export default {
           limit: this.limit
         })
         
-        this.diaryList = (res.list || []).map(diary => ({
+        const processedList = (res.list || []).map(diary => ({
           ...diary,
           // 过滤掉无效的附件对象
           attachments: (diary.attachments || []).filter(att => att && att.url)
         }))
-        this.total = res.total || 0
+        
+        // 强制重新渲染：先清空列表，下一帧再赋值
+        this.diaryList = []
+        this.$nextTick(() => {
+          this.diaryList = processedList
+          this.total = res.total || 0
+        })
+        
+        // 加载所有分类（用于移动操作）
+        await this.LoadAllCategories()
       } catch (error) {
         console.error('加载数据失败:', error)
         uni.showToast({
@@ -123,6 +224,193 @@ export default {
         })
       } finally {
         this.loading = false
+      }
+    },
+
+    async LoadAllCategories() {
+      try {
+        const categories = await api.getCategoryList()
+        // 过滤掉当前分类
+        this.allCategories = (categories || []).filter(cat => cat.id != this.categoryId)
+      } catch (error) {
+        console.error('加载分类列表失败:', error)
+      }
+    },
+
+    // 触摸开始
+    handleTouchStart(e, item) {
+      const touch = e.touches[0]
+      this.touchStartX = touch.clientX
+      this.touchStartY = touch.clientY
+      this.currentSwipeItem = item
+      
+      // 记录当前项的初始位置
+      item._startTranslateX = item._translateX || 0
+      
+      // 禁用过渡动画
+      this.$set(item, '_transition', false)
+      
+      // 关闭其他已打开的项
+      this.diaryList.forEach(otherItem => {
+        if (otherItem.id !== item.id && otherItem._translateX < 0) {
+          this.$set(otherItem, '_translateX', 0)
+          this.$set(otherItem, '_transition', true)
+        }
+      })
+    },
+
+    // 触摸移动
+    handleTouchMove(e, item) {
+      if (!this.currentSwipeItem || this.currentSwipeItem.id !== item.id) return
+      
+      const touch = e.touches[0]
+      const deltaX = touch.clientX - this.touchStartX
+      const deltaY = touch.clientY - this.touchStartY
+      
+      // 如果垂直滑动距离大于水平滑动距离，认为是垂直滚动，不处理
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        return
+      }
+      
+      // 阻止默认滚动行为
+      e.preventDefault()
+      
+      const startPos = item._startTranslateX || 0
+      let newTranslateX = startPos + deltaX
+      
+      // 向左滑动
+      if (newTranslateX < 0) {
+        // 允许超出边界滑动，但增加阻力（橡皮筋效果）
+        if (newTranslateX < -this.actionWidth) {
+          const overScroll = Math.abs(newTranslateX) - this.actionWidth
+          // 超出部分应用 0.3 的阻力系数
+          newTranslateX = -this.actionWidth - (overScroll * 0.3)
+        }
+        this.$set(item, '_translateX', newTranslateX)
+      } 
+      // 向右滑动（关闭）
+      else if (newTranslateX > 0) {
+        // 未打开状态不允许向右滑
+        if (startPos >= 0) {
+          this.$set(item, '_translateX', 0)
+        } else {
+          // 已打开状态允许向右滑动关闭
+          this.$set(item, '_translateX', newTranslateX)
+        }
+      } 
+      // 处于中间位置
+      else {
+        this.$set(item, '_translateX', newTranslateX)
+      }
+    },
+
+    // 触摸结束
+    handleTouchEnd(e, item) {
+      if (!this.currentSwipeItem || this.currentSwipeItem.id !== item.id) return
+      
+      // 启用过渡动画
+      this.$set(item, '_transition', true)
+      
+      const currentTranslate = item._translateX || 0
+      const startPos = item._startTranslateX || 0
+      
+      // 计算滑动距离
+      const moveDistance = currentTranslate - startPos
+      
+      // 判断是向左还是向右滑动
+      if (moveDistance < 0) {
+        // 向左滑动
+        // 如果滑动距离超过阈值，显示按钮
+        if (Math.abs(moveDistance) > this.swipeThreshold) {
+          this.$set(item, '_translateX', -this.actionWidth)
+        } else {
+          // 否则回弹到原位
+          this.$set(item, '_translateX', startPos)
+        }
+      } else if (moveDistance > 0) {
+        // 向右滑动
+        // 如果原来是打开状态，且滑动距离超过阈值，则关闭
+        if (startPos < 0 && moveDistance > this.swipeThreshold) {
+          this.$set(item, '_translateX', 0)
+        } else {
+          // 否则回弹到原位（保持打开状态）
+          this.$set(item, '_translateX', startPos)
+        }
+      } else {
+        // 没有滑动，保持原位
+        this.$set(item, '_translateX', startPos)
+      }
+      
+      this.currentSwipeItem = null
+      // 清除起始位置记录
+      delete item._startTranslateX
+    },
+
+    // 关闭所有滑动项
+    closeAllSwipe() {
+      this.diaryList.forEach(item => {
+        this.$set(item, '_translateX', 0)
+        this.$set(item, '_transition', true)
+      })
+    },
+
+    // 处理左滑点击事件
+    handleSwipeClick(e, item) {
+      const index = e.index
+      if (index === 0) {
+        // 移动日记
+        this.ShowMoveDialog(item)
+      } else if (index === 1) {
+        // 删除日记
+        this.ConfirmDelete(item.id)
+      }
+    },
+
+    // 显示移动对话框
+    ShowMoveDialog(diary) {
+      if (!this.allCategories || this.allCategories.length === 0) {
+        uni.showToast({
+          title: '没有其他分类可移动',
+          icon: 'none',
+        })
+        return
+      }
+
+      // 构建分类选项列表
+      const itemList = this.allCategories.map(cat => `${cat.icon} ${cat.name}`)
+      
+      uni.showActionSheet({
+        title: '移动到',
+        itemList: itemList,
+        success: (res) => {
+          const selectedCategory = this.allCategories[res.tapIndex]
+          this.MoveDiary(diary, selectedCategory)
+        }
+      })
+    },
+
+    // 移动日记到其他分类
+    async MoveDiary(diary, targetCategory) {
+      try {
+        await api.updateDiary(diary.id, {
+          content: diary.content,
+          contentHtml: diary.contentHtml,
+          categoryId: targetCategory.id
+        })
+        
+        uni.showToast({
+          title: `已移动到 ${targetCategory.name}`,
+          icon: 'success',
+        })
+        
+        // 重新加载数据
+        this.LoadData()
+      } catch (error) {
+        console.error('移动日记失败:', error)
+        uni.showToast({
+          title: '移动失败，请重试',
+          icon: 'none',
+        })
       }
     },
 
@@ -151,9 +439,26 @@ export default {
       })
     },
 
-    ViewDiary(id) {
+    ViewDiary(item) {
+      // 如果当前项已打开，点击后关闭
+      if (item._translateX < 0) {
+        this.$set(item, '_translateX', 0)
+        this.$set(item, '_transition', true)
+        return
+      }
+      
+      // 如果其他项打开，先关闭
+      const hasOtherOpenSwipe = this.diaryList.some(
+        otherItem => otherItem.id !== item.id && otherItem._translateX < 0
+      )
+      if (hasOtherOpenSwipe) {
+        this.closeAllSwipe()
+        return
+      }
+      
+      // 跳转到详情页
       uni.navigateTo({
-        url: `/pages/detail/detail?id=${id}`,
+        url: `/pages/detail/detail?id=${item.id}`,
       })
     },
 
@@ -246,103 +551,137 @@ export default {
   box-sizing: border-box;
 }
 
-.diary-item {
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 24rpx;
+/* 左滑容器 */
+.swipe-wrapper {
+  position: relative;
+  overflow: hidden;
   margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(255, 154, 118, 0.1);
-  transition: all 0.3s ease;
-  width: 100%;
-  box-sizing: border-box;
 }
 
-.diary-item:active {
-  transform: scale(0.98);
-  box-shadow: 0 2rpx 8rpx rgba(255, 154, 118, 0.15);
+.swipe-item {
+  position: relative;
+  z-index: 2;
+  background: #fff5f0;
 }
 
-/* 附件缩略图 */
-.diary-attachments {
+.swipe-actions {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
   display: flex;
-  gap: 8rpx;
-  margin-bottom: 16rpx;
-  overflow-x: auto;
-  width: 100%;
-  box-sizing: border-box;
+  z-index: 1;
+  /* 宽度由内联样式动态控制,跟随卡片滑动距离 */
 }
 
-.attachment-thumb {
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 12rpx;
-  flex-shrink: 0;
-  object-fit: cover;
-}
-
-.attachment-more {
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 12rpx;
-  background: rgba(255, 154, 118, 0.1);
+.swipe-btn {
+  flex: 1; /* 平均分配宽度 */
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.more-text {
+  color: #ffffff;
   font-size: 28rpx;
-  color: #ff9a76;
-  font-weight: 500;
 }
 
-.diary-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20rpx;
+.swipe-btn-move {
+  background: #4CAF50;
 }
 
-.diary-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333333;
-  margin-bottom: 16rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.swipe-btn-delete {
+  background: #FF5252;
+}
+
+.swipe-btn-text {
+  color: #ffffff;
+  font-size: 28rpx;
+}
+
+.diary-item {
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(255, 154, 118, 0.1);
   width: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: row;  /* 默认：封面在左，内容在右 */
+  min-height: 200rpx;
+  overflow: hidden;
+}
+
+/* 奇数次序：封面在右边（反转顺序） */
+.diary-item.cover-right {
+  flex-direction: row-reverse;
+}
+
+/* 封面区域：占据三分之一宽度，正方形 */
+.diary-cover {
+  width: 200rpx;
+  height: 200rpx;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 内容区域：占据三分之二宽度 */
+.diary-content {
+  flex: 1;
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+/* 偶数项：封面在左，内容右对齐 */
+.diary-content.align-right {
+  align-items: flex-end;
 }
 
 .diary-content-preview {
   font-size: 26rpx;
   color: #666666;
-  line-height: 1.6;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 16rpx;
-  width: 100%;
+  margin-bottom: 12rpx;
+  flex: 1;
   word-wrap: break-word;
   word-break: break-all;
-  box-sizing: border-box;
   /* 支持表情符号显示 */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 }
 
+/* 偶数项：预览文本右对齐 */
+.diary-content.align-right .diary-content-preview {
+  text-align: right;
+}
+
 .diary-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  padding-top: 16rpx;
+  padding-top: 12rpx;
   border-top: 1rpx solid #f5f5f5;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* 偶数项：footer 右对齐 */
+.diary-content.align-right .diary-footer {
+  justify-content: flex-end;
 }
 
 .diary-datetime {
@@ -350,50 +689,11 @@ export default {
   flex-direction: row;
   align-items: center;
   gap: 6rpx;
-  flex: 1;
-  min-width: 0;
 }
 
 .diary-date {
   font-size: 24rpx;
   color: #999999;
-}
-
-.diary-time-separator {
-  font-size: 24rpx;
-  color: #cccccc;
-}
-
-.diary-time {
-  font-size: 24rpx;
-  color: #999999;
-}
-
-.diary-actions {
-  display: flex;
-  gap: 16rpx;
-  flex-shrink: 0;
-}
-
-.action-btn {
-  width: 56rpx;
-  height: 56rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff5f0;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.action-btn:active {
-  transform: scale(0.9);
-  background: #ffe5d8;
-}
-
-.action-icon {
-  font-size: 32rpx;
 }
 
 /* 空状态 */
@@ -436,6 +736,7 @@ export default {
   justify-content: center;
   box-shadow: 0 8rpx 24rpx rgba(255, 126, 95, 0.4);
   transition: all 0.3s ease;
+  z-index: 100; /* 确保按钮在所有卡片上方 */
 }
 
 .add-btn:active {

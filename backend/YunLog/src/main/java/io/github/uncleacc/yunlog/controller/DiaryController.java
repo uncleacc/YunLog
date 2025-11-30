@@ -4,6 +4,7 @@ import io.github.uncleacc.yunlog.common.ApiResponse;
 import io.github.uncleacc.yunlog.common.PageResponse;
 import io.github.uncleacc.yunlog.dto.request.CreateDiaryRequest;
 import io.github.uncleacc.yunlog.dto.request.UpdateDiaryTimeRequest;
+import io.github.uncleacc.yunlog.dto.response.DiaryWithAttachmentsResponse;
 import io.github.uncleacc.yunlog.entity.Diary;
 import io.github.uncleacc.yunlog.service.DiaryService;
 import lombok.RequiredArgsConstructor;
@@ -28,13 +29,13 @@ public class DiaryController {
      * 获取日记列表
      */
     @GetMapping
-    public ApiResponse<PageResponse<Diary>> getDiaryList(
+    public ApiResponse<PageResponse<DiaryWithAttachmentsResponse>> getDiaryList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer limit,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String keyword) {
         
-        PageResponse<Diary> diaries;
+        PageResponse<DiaryWithAttachmentsResponse> diaries;
         if (keyword != null && !keyword.trim().isEmpty()) {
             // 搜索日记
             diaries = diaryService.searchDiaries(keyword, page, limit);

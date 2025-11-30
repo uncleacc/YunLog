@@ -476,6 +476,38 @@ export default {
       return { totalCount: 0, continueDays: 0 }
     }
   },
+  
+  // ==================== 设置管理 ====================
+  
+  /**
+   * 获取日记卡片对齐方式
+   * @returns {string} 'alternate' | 'default'
+   */
+  GetCardAlignment() {
+    try {
+      const alignment = uni.getStorageSync('diary_card_alignment')
+      return alignment || 'alternate'
+    } catch (e) {
+      console.error('获取对齐方式失败:', e)
+      return 'alternate'
+    }
+  },
+  
+  /**
+   * 保存日记卡片对齐方式
+   * @param {string} alignment - 'alternate' | 'default'
+   */
+  SetCardAlignment(alignment) {
+    try {
+      uni.setStorageSync('diary_card_alignment', alignment)
+      return true
+    } catch (e) {
+      console.error('保存对齐方式失败:', e)
+      return false
+    }
+  },
 }
+
+
 
 

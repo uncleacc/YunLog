@@ -107,6 +107,7 @@
 
 <script>
 import api from '@/utils/api.js'
+import { requireLogin } from '@/utils/auth.js'
 
 export default {
   data() {
@@ -126,6 +127,10 @@ export default {
     }
   },
   onShow() {
+    // 检查登录状态
+    if (!requireLogin()) {
+      return
+    }
     this.LoadCategories()
   },
   methods: {

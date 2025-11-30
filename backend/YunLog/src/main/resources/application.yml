@@ -36,6 +36,20 @@ spring:
       enabled: true
       max-file-size: 10MB
       max-request-size: 100MB
+  
+  # Redis配置
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
 
 # 服务器配置
 server:
@@ -43,16 +57,34 @@ server:
   servlet:
     context-path: /api/v1
 
-# 无用户认证模式
+# JWT配置
+jwt:
+  # JWT密钥（生产环境请使用环境变量或配置中心，至少32字符）
+  secret: yunlog-jwt-secret-key-2024-very-secure-and-long-enough-string
+  # JWT过期时间（秒），默认7天
+  expiration: 604800
 
-# 跨域配置
-cors:
-  allowed-origins: "*"
-  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
-  allowed-headers: "*"
+# 微信小程序配置
+wechat:
+  # 小程序AppID
+  appid: wx710ef06e5d729748
+  # 小程序AppSecret
+  secret: aa40af9927cc77f0434ad97b0f95393f
 
-# 阿里云 OSS 配置
+# 阿里云短信配置
 aliyun:
+  sms:
+    # 是否启用短信服务（开发环境可设为false使用模拟模式）
+    enabled: ${ALIYUN_SMS_ENABLED:false}
+    # AccessKey ID
+    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:}
+    # AccessKey Secret
+    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
+    # 短信签名
+    sign-name: ${ALIYUN_SMS_SIGN_NAME:云日记}
+    # 短信模板代码
+    template-code: ${ALIYUN_SMS_TEMPLATE_CODE:}
+  # OSS配置
   oss:
     endpoint: oss-cn-beijing.aliyuncs.com
     access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID}

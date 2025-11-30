@@ -33,6 +33,16 @@ public class GlobalExceptionHandler {
     }
     
     /**
+     * 参数异常处理（IllegalArgumentException）
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Object> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.warn("参数异常：{}", e.getMessage());
+        return ApiResponse.badRequest(e.getMessage());
+    }
+    
+    /**
      * 参数验证异常处理
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)

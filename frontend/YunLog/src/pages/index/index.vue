@@ -182,7 +182,6 @@ export default {
       // 震动反馈
       uni.vibrateShort({ type: 'light' })
       
-      console.log('开始拖动分类:', item.name, 'index:', index)
     },
     
     /**
@@ -285,7 +284,6 @@ export default {
       
       try {
         await updateCategorySort(categorySortList)
-        console.log('排序保存成功')
       } catch (error) {
         console.error('保存排序失败:', error)
         uni.showToast({

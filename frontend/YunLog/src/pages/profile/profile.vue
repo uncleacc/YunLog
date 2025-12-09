@@ -70,7 +70,7 @@
 </template>
 
 <script>
-import { getUserInfo, logout, isLoggedIn } from '@/utils/auth.js'
+import { getUserInfo, logout, isLoggedIn, showWechatLoginModal, performWechatLogin } from '@/utils/auth.js'
 import api from '@/utils/api.js'
 
 export default {
@@ -97,11 +97,9 @@ export default {
       }
     },
     
-    // 跳转到登录页
+    // 处理登录
     handleLogin() {
-      uni.navigateTo({
-        url: '/pages/login/login'
-      })
+      showWechatLoginModal(performWechatLogin)
     },
     
     // 跳转到分类管理
@@ -147,11 +145,9 @@ export default {
                 duration: 1500
               })
               
-              // 跳转到登录页
+              // 刷新当前页面
               setTimeout(() => {
-                uni.reLaunch({
-                  url: '/pages/login/login'
-                })
+                this.loadUserInfo()
               }, 1500)
             }
           }

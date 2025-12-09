@@ -77,7 +77,6 @@ export default {
       const list = this.GetDiaryList()
       const index = list.findIndex((item) => item.id === id)
       
-      console.log('UpdateDiary - 查找日记:', {
         id,
         found: index !== -1,
         totalDiaries: list.length
@@ -85,7 +84,6 @@ export default {
       
       if (index !== -1) {
         const oldDiary = list[index]
-        console.log('UpdateDiary - 更新前:', {
           title: oldDiary.title,
           contentLength: oldDiary.content ? oldDiary.content.length : 0,
           hasHtml: !!oldDiary.contentHtml,
@@ -98,7 +96,6 @@ export default {
           updateTime: new Date().toISOString(),
         }
         
-        console.log('UpdateDiary - 更新后:', {
           title: list[index].title,
           contentLength: list[index].content ? list[index].content.length : 0,
           hasHtml: !!list[index].contentHtml,

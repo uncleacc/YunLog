@@ -70,7 +70,6 @@ export default {
   watch: {
     formatStates: {
       handler(newStates, oldStates) {
-        console.log('EditorToolbar - 格式状态变化:', {
           old: oldStates,
           new: newStates
         })
@@ -80,11 +79,9 @@ export default {
   },
   methods: {
     onToggleFormat(format) {
-      console.log('EditorToolbar - 点击格式按钮:', format)
       this.$emit('toggle-format', format)
     },
     onToggleList(listType) {
-      console.log('EditorToolbar - 点击列表按钮:', listType)
       this.$emit('toggle-list', listType)
     },
     onToggleAttachmentBar() {

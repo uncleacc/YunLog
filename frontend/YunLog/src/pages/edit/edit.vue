@@ -298,7 +298,6 @@ export default {
   },
 
   onLoad(options) {
-    console.log('onLoad - 页面加载', options)
     
     // 检查登录状态
     if (!requireLogin()) {
@@ -325,7 +324,6 @@ export default {
     // 获取编辑器上下文
     this.editorCtx = uni.createSelectorQuery().select('#editor').context((res) => {
       this.editorCtx = res.context
-      console.log('编辑器上下文初始化完成')
       
       // 如果是编辑模式且有内容，设置内容
       if (this.isEditing && this.formData.contentHtml) {
@@ -399,7 +397,6 @@ export default {
           .boundingClientRect((rect) => {
             if (rect && rect.height) {
               this.bottomAreaHeight = rect.height
-              console.log('measureBottomArea - bottomAreaHeight(px):', this.bottomAreaHeight)
             }
           })
           .exec()
@@ -416,7 +413,6 @@ export default {
           .boundingClientRect((rect) => {
             if (rect && rect.height) {
               this.topBarHeight = rect.height
-              console.log('measureTopBar - topBarHeight(px):', this.topBarHeight)
             }
           })
           .exec()
@@ -445,12 +441,10 @@ export default {
     
     // 处理编辑器就绪
     handleEditorReady(e) {
-      console.log('编辑器就绪')
       uni.createSelectorQuery()
         .select('#editor')
         .context((res) => {
           this.editorCtx = res.context
-          console.log('编辑器上下文获取成功')
           
           // 如果是编辑模式且有内容，设置内容
           if (this.isEditing && this.formData.contentHtml) {
@@ -483,7 +477,6 @@ export default {
     
     // 处理编辑器选择变化
     handleEditorSelectionChange(e) {
-      console.log('选择变化:', e.detail)
     },
     
     // 处理编辑器状态变化
@@ -594,7 +587,6 @@ export default {
     // 添加图片附件 - 立即上传到OSS
     async addImageAttachment(tempFilePath) {
       try {
-        console.log('addImageAttachment - 开始上传图片:', tempFilePath)
         
         // 创建临时附件对象（用于显示）
         const tempAttachment = {
@@ -613,7 +605,6 @@ export default {
         
         // 上传临时图片到OSS
         const uploadResult = await api.uploadTempImage(tempFilePath)
-        console.log('addImageAttachment - 上传成功:', uploadResult)
         
         // 更新附件对象
         this.formData.attachments[attachmentIndex] = {
@@ -660,16 +651,12 @@ export default {
       try {
         // 如果附件有ID，说明是从数据库加载的，需要删除数据库记录
         if (attachment.id) {
-          console.log('handleRemoveAttachment - 删除数据库附件记录 ID:', attachment.id)
           await api.deleteAttachment(attachment.id)
-          console.log('handleRemoveAttachment - 数据库记录删除成功')
         }
         
         // 如果是已上传到OSS的文件，尝试删除OSS文件
         if (attachment.url && !attachment.url.startsWith('wxfile://') && !attachment.url.startsWith('blob:')) {
-          console.log('handleRemoveAttachment - 删除OSS文件:', attachment.url)
           await api.deleteOssFile(attachment.url)
-          console.log('handleRemoveAttachment - OSS文件删除成功')
         }
       } catch (error) {
         console.warn('handleRemoveAttachment - 删除失败:', error)
@@ -735,7 +722,6 @@ export default {
       }
 
       try {
-        console.log(`🚀 编辑页面加载日记 ID: ${this.diaryId}`)
         
         // 确保 diaryId 是数字类型
         const numericId = parseInt(this.diaryId, 10)
@@ -747,13 +733,11 @@ export default {
 
         // 从后端获取日记详情
         const diary = await api.getDiaryDetail(numericId)
-        console.log('✅ 编辑页面获取日记成功:', diary)
 
         // 获取附件列表
         let attachments = []
         try {
           attachments = await api.getAttachmentsByDiary(numericId)
-          console.log('✅ 编辑页面获取附件成功:', attachments)
           
           // 过滤掉无效的附件对象，并标记已存在的附件
           attachments = (attachments || [])
@@ -780,7 +764,6 @@ export default {
           categoryId: diary.categoryId || 'default',
         }
         
-        console.log('LoadDiary - 已存在附件详情:', this.formData.attachments.map(att => ({
           id: att.id,
           url: att.url ? att.url.substring(att.url.length - 20) : 'no-url',
           existsInDb: att.existsInDb
@@ -788,7 +771,6 @@ export default {
         
         this.contentLength = diary.content ? diary.content.length : 0
         
-        console.log('LoadDiary - 表单数据设置完成:', {
           contentLength: this.contentLength,
           hasContentHtml: !!this.formData.contentHtml,
           attachmentsCount: this.formData.attachments.length,
@@ -797,7 +779,6 @@ export default {
         
         // 如果编辑器已准备好且有内容，则设置内容
         if (this.editorCtx && diary.contentHtml) {
-          console.log('LoadDiary - 设置编辑器内容')
           this.setEditorContent(diary.contentHtml)
         }
       } catch (error) {
@@ -824,7 +805,6 @@ export default {
         uni.showLoading({ title: '保存中...' })
         
         // 检查编辑器上下文
-        console.log('SaveDiary - 检查编辑器状态:', {
           hasEditorCtx: !!this.editorCtx,
           hasEdited: this.hasEdited,
           contentLength: this.contentLength
@@ -838,13 +818,11 @@ export default {
         if (!emojiValidation.isValid) {
           console.warn('SaveDiary - 表情符号验证警告:', emojiValidation)
         } else if (emojiValidation.textEmojiCount > 0) {
-          console.log('SaveDiary - 表情符号验证通过:', {
             emojiCount: emojiValidation.textEmojiCount,
             emojis: emojiValidation.textEmojis
           })
         }
         
-        console.log('SaveDiary - 获取到编辑器内容:', {
           text: editorContent.text ? editorContent.text.substring(0, 50) + '...' : 'null',
           html: editorContent.html ? editorContent.html.substring(0, 50) + '...' : 'null',
           textLength: editorContent.text ? editorContent.text.length : 0,
@@ -856,7 +834,6 @@ export default {
         this.formData.content = editorContent.text || ''
         this.formData.contentHtml = editorContent.html || ''
         
-        console.log('SaveDiary - 准备保存的数据:', {
           isEditing: this.isEditing,
           contentLength: this.formData.content.length,
           hasHtml: !!this.formData.contentHtml,
@@ -876,17 +853,14 @@ export default {
         if (this.isEditing) {
           // 编辑模式 - 更新现有日记
           const numericId = parseInt(this.diaryId, 10)
-          console.log('SaveDiary - 更新日记 ID:', numericId)
           result = await api.updateDiary(numericId, saveData)
         } else {
           // 新建模式 - 创建新日记
-          console.log('SaveDiary - 创建新日记')
           result = await api.createDiary(saveData)
         }
         
         // 日记保存成功后，处理附件关联
         if (result && this.formData.attachments.length > 0) {
-          console.log('SaveDiary - 处理附件关联:', this.formData.attachments.length)
           
           try {
             // 过滤出需要创建数据库记录的新附件
@@ -898,26 +872,21 @@ export default {
               !att.url.startsWith('blob:') &&
               !att.url.startsWith('http://tmp/'))
             
-            console.log('SaveDiary - 需要创建记录的新附件数量:', newAttachments.length)
             
             if (newAttachments.length > 0) {
               // 获取日记ID
               const diaryId = this.isEditing ? parseInt(this.diaryId, 10) : result.id
-              console.log('SaveDiary - 关联到日记ID:', diaryId)
               
               if (diaryId) {
                 // 批量创建新附件记录
                 const newAttachmentUrls = newAttachments.map(att => att.url)
-                console.log('SaveDiary - 新附件URLs:', newAttachmentUrls)
                 
                 await api.batchCreateAttachments({
                   diaryId: diaryId,
                   urls: newAttachmentUrls
                 })
-                console.log('SaveDiary - 新附件关联成功')
               }
             } else {
-              console.log('SaveDiary - 没有需要创建记录的新附件')
             }
           } catch (attachmentError) {
             console.warn('SaveDiary - 附件关联失败:', attachmentError)
@@ -933,7 +902,6 @@ export default {
         uni.hideLoading()
         
         if (result) {
-          console.log('SaveDiary - 保存成功:', result)
           uni.showToast({ title: '保存成功', icon: 'success' })
           setTimeout(() => {
             uni.navigateBack()
@@ -1006,11 +974,9 @@ export default {
     // 更新日记时间
     async updateDiaryTime(newDate) {
       try {
-        console.log('updateDiaryTime - 原始时间字符串:', this.currentDiaryInfo.createTime)
         
         // 使用兼容的日期解析
         const originalDate = parseDate(this.currentDiaryInfo.createTime)
-        console.log('updateDiaryTime - 解析后的原始时间:', originalDate)
         
         // 保持原来的时分秒，只修改年月日
         const updatedDate = new Date(
@@ -1023,22 +989,18 @@ export default {
           originalDate.getMilliseconds()
         )
         
-        console.log('updateDiaryTime - 更新后的时间:', updatedDate)
         
         // 格式化为后端兼容的格式
         const newTimeString = formatDateForBackend(updatedDate)
-        console.log('updateDiaryTime - 格式化后的时间字符串:', newTimeString)
         
         // 保存到后端 - 使用专门的更新时间API
         const numericId = parseInt(this.diaryId, 10)
-        console.log('updateDiaryTime - 更新日记ID:', numericId)
         
         const timeData = {
           createTime: newTimeString // 只发送时间数据
         }
         
         const result = await api.updateDiaryTime(numericId, timeData)
-        console.log('updateDiaryTime - 更新结果:', result)
         
         // 更新成功后才更新本地显示
         this.currentDiaryInfo.createTime = newTimeString

@@ -3,7 +3,7 @@
  * 统一处理请求和响应
  */
 
-import { getToken, navigateToLogin } from './auth.js'
+import { getToken, showWechatLoginModal, performWechatLogin } from './auth.js'
 
 // 后端 API 基础地址配置
 // 生产环境：使用云服务器地址
@@ -74,21 +74,13 @@ function request(options) {
             reject(new Error(errorMsg))
           }
         } else if (res.statusCode === 401) {
-          // 未授权，跳转到登录页
+          // 未授权，显示登录弹窗
           if (options.loading !== false) {
             uni.hideLoading()
           }
           
-          uni.showToast({
-            title: '请先登录',
-            icon: 'none',
-            duration: 1500
-          })
-          
-          // 延迟跳转，让用户看到提示
-          setTimeout(() => {
-            navigateToLogin()
-          }, 1500)
+          // 显示微信登录弹窗
+          showWechatLoginModal(performWechatLogin)
           
           reject(new Error('未授权'))
         } else {
